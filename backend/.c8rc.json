@@ -3,10 +3,9 @@
   "include": ["src/**/*.ts"],
   "exclude": [
     "src/**/*.spec.ts",
-    "src/main.ts",
-    "src/**/*.module.ts",
     "src/**/*.dto.ts",
-    "src/generated/**"
+    "src/generated/**",
+    "src/test-db-connection.ts"
   ],
   "extension": [".ts"],
   "reporter": ["text", "html", "lcov"],

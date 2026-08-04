@@ -78,7 +78,8 @@
     "tsx": "^4.19.2",
     "typescript": "^5.7.3",
     "typescript-eslint": "^8.24.0"
-  },"overrides": {
+  },
+  "overrides": {
     "serialize-javascript": "^7.0.5"
   }
 }

@@ -2,6 +2,9 @@ import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus } from
 import { Request, Response } from 'express';
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
 
+/**
+ * Interface for standardized JSON error response returned as API Error Response.
+ */
 interface ErrorResponseBody {
   statusCode: number;
   message: string | string[];
@@ -10,16 +13,32 @@ interface ErrorResponseBody {
   timestamp: string;
 }
 
+/**
+ * Global exception filter catching all errors.
+ * Logs error details via Pino logger and returns JSON response payload.
+ */
 @Catch()
 export class GlobalExceptionFilter implements ExceptionFilter {
+  /**
+   * Constructs the global exception filter.
+   *
+   * @param {PinoLogger} logger Logger instance injected by nestjs-pino.
+   */
   constructor(@InjectPinoLogger(GlobalExceptionFilter.name) private readonly logger: PinoLogger) {
     this.logger.setContext(GlobalExceptionFilter.name);
   }
 
+  /**
+   * Handles caught exceptions and formats the HTTP response.
+   *
+   * @param {unknown} exception Any Exception caught in the request pipeline.
+   * @param {ArgumentsHost} host Context host containing HTTP request and response objects.
+   * @returns {void}
+   */
   catch(exception: unknown, host: ArgumentsHost): void {
-    const ctx = host.switchToHttp();
-    const response = ctx.getResponse<Response>();
-    const request = ctx.getRequest<Request>();
+    const context = host.switchToHttp();
+    const response = context.getResponse<Response>();
+    const request = context.getRequest<Request>();
 
     const isHttpException = exception instanceof HttpException;
     const status = isHttpException ? exception.getStatus() : HttpStatus.INTERNAL_SERVER_ERROR;
@@ -55,6 +74,13 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     response.status(status).json(body);
   }
 
+  /**
+   * Extracts user readable error message from exception objects.
+   *
+   * @param {unknown} exceptionResponse Response payload from an HttpException if present.
+   * @param {unknown} exception Original exception instance.
+   * @returns {string | string[]} Formatted error message string.
+   */
   private extractMessage(exceptionResponse: unknown, exception: unknown): string | string[] {
     if (
       exceptionResponse &&
