@@ -39,25 +39,36 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     const context = host.switchToHttp();
     const response = context.getResponse<Response>();
     const request = context.getRequest<Request>();
-
+    if (!response || response.headersSent) {
+      return;
+    }
     const isHttpException = exception instanceof HttpException;
     const status = isHttpException ? exception.getStatus() : HttpStatus.INTERNAL_SERVER_ERROR;
 
     const exceptionResponse = isHttpException ? exception.getResponse() : null;
-    const message = this.extractMessage(exceptionResponse, exception);
+    const clientMessage = isHttpException
+      ? this.extractMessage(exceptionResponse, exception)
+      : 'Internal server error';
+    const rawErrorMessage =
+      exception instanceof Error
+        ? exception.message
+        : typeof exception === 'string'
+          ? exception
+          : 'Unknown error';
     const errorName = isHttpException ? exception.name : 'InternalServerError';
+    const path = request.originalUrl ?? request.url;
 
     const body: ErrorResponseBody = {
       statusCode: status,
-      message,
+      message: clientMessage,
       error: errorName,
-      path: request.url,
+      path,
       timestamp: new Date().toISOString(),
     };
 
     const logContext = {
       statusCode: status,
-      path: request.url,
+      path,
       method: request.method,
       userId: (request as unknown as { user?: { id: string } }).user?.id,
     };
@@ -65,10 +76,10 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     if (status >= 500) {
       this.logger.error(
         { ...logContext, stack: exception instanceof Error ? exception.stack : undefined },
-        `Unhandled exception: ${message}`,
+        `Unhandled exception: ${rawErrorMessage}`,
       );
     } else {
-      this.logger.warn(logContext, `Handled exception: ${message}`);
+      this.logger.warn(logContext, `Handled exception: ${rawErrorMessage}`);
     }
 
     response.status(status).json(body);
