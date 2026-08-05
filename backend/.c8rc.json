@@ -1,0 +1,17 @@
+{
+  "all": true,
+  "include": ["src/**/*.ts"],
+  "exclude": [
+    "src/**/*.spec.ts",
+    "src/**/*.dto.ts",
+    "src/generated/**",
+    "src/test-db-connection.ts"
+  ],
+  "extension": [".ts"],
+  "reporter": ["text", "html", "lcov"],
+  "check-coverage": true,
+  "branches": 70,
+  "lines": 70,
+  "functions": 70,
+  "statements": 70
+}
