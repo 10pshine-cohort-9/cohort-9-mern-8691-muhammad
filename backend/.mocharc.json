@@ -2,5 +2,6 @@
   "extension": ["ts"],
   "spec": ["src/**/*.spec.ts"],
   "node-option": ["import=tsx"],
-  "timeout": 10000
+  "timeout": 10000,
+  "check-leaks": true
 }
