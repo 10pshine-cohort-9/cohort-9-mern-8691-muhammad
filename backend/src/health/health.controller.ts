@@ -3,7 +3,7 @@ import {
   HealthCheck,
   PrismaHealthIndicator,
   HealthCheckService,
-  HttpHealthIndicator,
+  type HealthCheckResult,
 } from '@nestjs/terminus';
 import { PrismaService } from '../prisma/prisma.service.js';
 
@@ -15,16 +15,14 @@ import { PrismaService } from '../prisma/prisma.service.js';
 export class HealthController {
   constructor(
     private readonly health: HealthCheckService,
-    private readonly http: HttpHealthIndicator,
     private readonly prismaHealth: PrismaHealthIndicator,
     private readonly prisma: PrismaService,
   ) {}
 
   @Get()
   @HealthCheck()
-  check() {
+  check(): Promise<HealthCheckResult> {
     return this.health.check([
-      () => this.http.pingCheck('google', 'https://www.google.com'),
       () => this.prismaHealth.pingCheck('database', this.prisma),
     ]);
   }

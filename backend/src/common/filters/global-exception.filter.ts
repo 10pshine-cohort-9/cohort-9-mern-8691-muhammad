@@ -60,17 +60,19 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 
     const clientMessage = status >= 500 ? 'Internal Server Error' : rawMessage;
 
+    const path = request.url.split('?')[0];
+
     const body: ErrorResponseBody = {
       statusCode: status,
       message: clientMessage,
       error: errorName,
-      path: request.url,
+      path,
       timestamp: new Date().toISOString(),
     };
 
     const logContext = {
       statusCode: status,
-      path: request.url,
+      path,
       method: request.method,
       userId: request.user?.id,
     };
