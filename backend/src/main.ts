@@ -2,27 +2,33 @@ import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { Logger } from 'nestjs-pino';
 import { AppModule } from './app.module.js';
-import { ZodValidationPipe } from './common/pipes/zod-validation.pipe.js';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  app.enableShutdownHooks();
+  const logger = app.get(Logger);
+  app.useLogger(logger);
 
-  app.useLogger(app.get(Logger));
-
-  app.useGlobalPipes(new ZodValidationPipe());
+  const corsOrigins = process.env.CORS_ORIGIN
+    ? process.env.CORS_ORIGIN.split(',').map((origin) => origin.trim())
+    : 'http://localhost:3000';
 
   app.enableCors({
-    origin: process.env.CORS_ORIGIN?.split(',') ?? 'http://localhost:3000',
+    origin: corsOrigins,
     credentials: true,
   });
 
-  app.setGlobalPrefix('api/v1', { exclude: ['health'] });
+  app.setGlobalPrefix('api', { exclude: ['health'] });
 
-  const port = process.env.PORT ?? 4000;
+  const port = Number(process.env.PORT ?? 4000);
   await app.listen(port);
+
+  logger.log(`Notes API listening on http://localhost:${port}`, 'Bootstrap');
 }
 
-bootstrap().catch((err: unknown) => {
-  console.error('Fatal error during application bootstrap:', err);
+try {
+  await bootstrap();
+} catch (err: unknown) {
+  console.error('Error during startup:', err);
   process.exit(1);
-});
+}
