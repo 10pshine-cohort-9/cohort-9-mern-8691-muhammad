@@ -1,23 +1,31 @@
-import { Inject, Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  Logger,
+  type OnModuleInit,
+  type OnModuleDestroy,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaNeon } from '@prisma/adapter-neon';
-import { PrismaClient } from './generated-client.js';
+import { PrismaClient } from '../generated/prisma/client.js';
 
 /**
  * Postgre (Neon) Based global database service using Prisma 7.
  * Handles database connection lifecycle, wraps connection based errors, and ensures sanitization of user entity.
  */
 @Injectable()
-export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
+export class PrismaService
+  extends PrismaClient
+  implements OnModuleInit, OnModuleDestroy
+{
   private readonly serviceLogger = new Logger(PrismaService.name);
 
   /**
-   * Initializes Prisma Client instance with a Neon PostgreSQL driver adapter from Prisma.
-   *
-   * @param {ConfigService} configService NestJS configuration service for getting ENV Variables.
+   * Initializes Prisma Client instance with a Neon PostgreSQL driver adapter.
    */
   constructor(@Inject(ConfigService) configService: ConfigService) {
-    const connectionString = configService?.get<string>('DATABASE_URL') ?? process.env.DATABASE_URL;
+    const connectionString =
+      configService?.get<string>('DATABASE_URL') ?? process.env.DATABASE_URL;
     if (!connectionString) {
       throw new Error(
         'DATABASE_URL is not set. Copy .env.example to .env and fill it accordingly.',
@@ -28,9 +36,7 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
   }
 
   /**
-   * Connects to the database when the NestJS module initializes.
-   *
-   * @returns {Promise<void>}
+   * Connects to the database when the NestJS main app module initializes.
    */
   async onModuleInit(): Promise<void> {
     try {
@@ -45,9 +51,7 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
   }
 
   /**
-   * Properly disconnects from the database when the NestJS module destroys.
-   *
-   * @returns {Promise<void>}
+   * Properly disconnects from the database when the NestJS main app module destroys.
    */
   async onModuleDestroy(): Promise<void> {
     try {
@@ -61,13 +65,13 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
   }
 
   /**
-   * Removes sensitive fields (such as passwordHash) before an entity is returned.
-   *
-   * @param {T} user User object containing some sensitive fields.
-   * @returns {Omit<T, 'passwordHash'>} User object stripped of passwordHash property.
+   * Removes sensitive passwordhash field before user is returned to api calling response.
    */
-  sanitizeUser<T extends { passwordHash?: string }>(user: T): Omit<T, 'passwordHash'> {
-    const { passwordHash: _passwordHash, ...safe } = user;
+  sanitizeUser<T extends { passwordHash?: string }>(
+    user: T,
+  ): Omit<T, 'passwordHash'> {
+    const safe = { ...user };
+    delete safe.passwordHash;
     return safe;
   }
 }

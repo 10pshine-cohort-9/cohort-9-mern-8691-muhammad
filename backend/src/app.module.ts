@@ -1,30 +1,45 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
-import { LoggerModule } from 'nestjs-pino';
-import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
-import { EventEmitterModule } from '@nestjs/event-emitter';
-import { APP_FILTER, APP_GUARD } from '@nestjs/core';
-import { pinoConfig } from './common/logger/logger.config.js';
-import { GlobalExceptionFilter } from './common/filters/http-exception.filter.js';
+import { HealthModule } from './health/health.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
-import { HealthController } from './health.controller.js';
+import { ConfigModule } from '@nestjs/config';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
+import { ZodSerializerInterceptor, ZodValidationPipe } from 'nestjs-zod';
+import { GlobalExceptionFilter } from './common/filters/global-exception.filter.js';
+import { LoggerModule } from 'nestjs-pino';
+import { pinoConfig } from './common/config/logger.config.js';
 
-/**
- * Root application module combining core infrastructure (config, logging, rate limiting),
- * database integration, global guards and filters, and other feature modules.
- */
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env' }),
+    ConfigModule.forRoot({ isGlobal: true }),
     LoggerModule.forRootAsync({ useFactory: pinoConfig }),
-    ThrottlerModule.forRoot([{ ttl: 60000, limit: 60 }]),
-    EventEmitterModule.forRoot(),
+    ThrottlerModule.forRoot([
+      {
+        name: 'default',
+        ttl: 60000,
+        limit: 60,
+      },
+    ]),
     PrismaModule,
+    HealthModule,
   ],
-  controllers: [HealthController],
   providers: [
-    { provide: APP_FILTER, useClass: GlobalExceptionFilter },
-    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    {
+      provide: APP_FILTER,
+      useClass: GlobalExceptionFilter,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+    {
+      provide: APP_PIPE,
+      useClass: ZodValidationPipe,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: ZodSerializerInterceptor,
+    },
   ],
 })
 export class AppModule {}

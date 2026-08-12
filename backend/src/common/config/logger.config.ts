@@ -1,11 +1,9 @@
-import { Params } from 'nestjs-pino';
+import { type Params } from 'nestjs-pino';
 
 /**
- * Make Pino logger configuration parameters for LoggerModule.
- * Formats output with pino-pretty during development and structured JSON in production,
- * eliminating sensitive fields like authorization headers and password.
- *
- * @returns {Params} NestJS Pino logger configuration parameters.
+ * Pino logger configuration parameters generator for PinoLogger Module.
+ * Development environment provides with pretty logging output while production provides structured JSON.
+ * Sensitive fields are censored with [REDACTED] output in place.
  */
 export const pinoConfig = (): Params => ({
   pinoHttp: {
@@ -36,8 +34,16 @@ export const pinoConfig = (): Params => ({
     customProps: (): Record<string, string> => ({ context: 'HTTP' }),
     autoLogging: true,
     serializers: {
-      req(req: { id?: string | number; method?: string; url?: string }): Record<string, unknown> {
-        return { id: req.id, method: req.method, url: req.url };
+      req(req: {
+        id?: string | number;
+        method?: string;
+        url?: string;
+      }): Record<string, unknown> {
+        return {
+          id: req.id,
+          method: req.method,
+          url: req.url?.split('?')[0],
+        };
       },
     },
   },
