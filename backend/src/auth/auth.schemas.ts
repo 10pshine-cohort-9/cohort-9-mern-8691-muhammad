@@ -50,6 +50,4 @@ export const safeUserSchema = z.object({
   email: z.email(),
   username: z.string(),
   name: nameSchema.nullable().optional(),
-  createdAt: z.coerce.date(),
-  updatedAt: z.coerce.date(),
 });
