@@ -9,6 +9,7 @@ import { GlobalExceptionFilter } from './common/filters/global-exception.filter.
 import { LoggerModule } from 'nestjs-pino';
 import { pinoConfig } from './common/config/logger.config.js';
 import { TokenModule } from './token/token.module.js';
+import { TransformInterceptor } from './common/interceptors/transform.interceptor.js';
 
 @Module({
   imports: [
@@ -37,6 +38,10 @@ import { TokenModule } from './token/token.module.js';
     {
       provide: APP_PIPE,
       useClass: ZodValidationPipe,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: TransformInterceptor,
     },
     {
       provide: APP_INTERCEPTOR,
