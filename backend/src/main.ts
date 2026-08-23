@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { Logger } from 'nestjs-pino';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module.js';
 
 async function bootstrap(): Promise<void> {
@@ -19,6 +20,18 @@ async function bootstrap(): Promise<void> {
   });
 
   app.setGlobalPrefix('api', { exclude: ['health'] });
+
+  // We are exposing swagger ui for api in development only.
+  if (process.env.NODE_ENV !== 'production') {
+    const config = new DocumentBuilder()
+      .setTitle('Notes API')
+      .setDescription('REST API for the notes application')
+      .setVersion('1.0')
+      .addBearerAuth()
+      .build();
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('docs', app, document);
+  }
 
   const port = Number(process.env.PORT ?? 4000);
   await app.listen(port);
