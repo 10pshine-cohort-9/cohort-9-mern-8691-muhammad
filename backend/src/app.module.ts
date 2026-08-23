@@ -11,6 +11,7 @@ import { LoggerModule } from 'nestjs-pino';
 import { pinoConfig } from './common/config/logger.config.js';
 import { TokenModule } from './token/token.module.js';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor.js';
+import { PrismaExceptionFilter } from './common/filters/prisma-exception.filter.js';
 
 @Module({
   imports: [
@@ -29,6 +30,10 @@ import { TransformInterceptor } from './common/interceptors/transform.intercepto
     AuthModule,
   ],
   providers: [
+    {
+      provide: APP_FILTER,
+      useClass: PrismaExceptionFilter,
+    },
     {
       provide: APP_FILTER,
       useClass: GlobalExceptionFilter,

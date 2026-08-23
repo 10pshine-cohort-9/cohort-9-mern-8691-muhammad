@@ -7,7 +7,10 @@ import { type Params } from 'nestjs-pino';
  */
 export const pinoConfig = (): Params => ({
   pinoHttp: {
-    level: process.env.LOG_LEVEL || 'info',
+    level:
+      process.env.NODE_ENV !== 'production'
+        ? 'debug'
+        : process.env.LOG_LEVEL || 'info',
     transport:
       process.env.NODE_ENV !== 'production'
         ? {
