@@ -8,6 +8,7 @@ import { ZodSerializerInterceptor, ZodValidationPipe } from 'nestjs-zod';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter.js';
 import { LoggerModule } from 'nestjs-pino';
 import { pinoConfig } from './common/config/logger.config.js';
+import { TokenModule } from './token/token.module.js';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { pinoConfig } from './common/config/logger.config.js';
     ]),
     PrismaModule,
     HealthModule,
+    TokenModule,
   ],
   providers: [
     {
