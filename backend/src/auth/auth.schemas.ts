@@ -45,10 +45,6 @@ export const logoutSchema = z.object({
   refreshToken: z.string().optional(),
 });
 
-export const refreshTokenSchema = z.object({
-  refreshToken: z.string().min(1, 'Refresh token is required'),
-});
-
 export const safeUserSchema = z.object({
   id: z.string(),
   email: z.email(),
@@ -56,14 +52,4 @@ export const safeUserSchema = z.object({
   name: nameSchema.nullable().optional(),
   createdAt: z.coerce.date(),
   updatedAt: z.coerce.date(),
-});
-
-export const authTokensSchema = z.object({
-  accessToken: z.string(),
-  refreshToken: z.string(),
-});
-
-export const authResponseSchema = z.object({
-  user: safeUserSchema,
-  tokens: authTokensSchema,
 });
