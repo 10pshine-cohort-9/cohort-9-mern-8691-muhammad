@@ -17,8 +17,8 @@ model User {
   updatedAt DateTime @updatedAt
   // This refresh token array helps in mutidevice logins
   refreshTokens RefreshToken[]
+  notes Note[]
 }
-
 
 model RefreshToken {
   id String @id @default(uuid())
@@ -27,4 +27,23 @@ model RefreshToken {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   expiresAt DateTime
   createdAt DateTime @default(now())
+}
+
+model Note {
+  id String @id @default(uuid())
+  title String
+  content String
+  isPinned Boolean @default(false)
+  isFavorite Boolean @default(false)
+  ownerId String
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  tags Tag[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Tag {
+  id String @id @default(uuid())
+  name String @unique
+  notes Note[]
 }
