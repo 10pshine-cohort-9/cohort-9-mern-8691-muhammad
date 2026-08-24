@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { AuthModule } from './auth/auth.module.js';
 import { HealthModule } from './health/health.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { ConfigModule } from '@nestjs/config';
@@ -8,6 +9,9 @@ import { ZodSerializerInterceptor, ZodValidationPipe } from 'nestjs-zod';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter.js';
 import { LoggerModule } from 'nestjs-pino';
 import { pinoConfig } from './common/config/logger.config.js';
+import { TokenModule } from './token/token.module.js';
+import { TransformInterceptor } from './common/interceptors/transform.interceptor.js';
+import { PrismaExceptionFilter } from './common/filters/prisma-exception.filter.js';
 
 @Module({
   imports: [
@@ -22,8 +26,14 @@ import { pinoConfig } from './common/config/logger.config.js';
     ]),
     PrismaModule,
     HealthModule,
+    TokenModule,
+    AuthModule,
   ],
   providers: [
+    {
+      provide: APP_FILTER,
+      useClass: PrismaExceptionFilter,
+    },
     {
       provide: APP_FILTER,
       useClass: GlobalExceptionFilter,
@@ -35,6 +45,10 @@ import { pinoConfig } from './common/config/logger.config.js';
     {
       provide: APP_PIPE,
       useClass: ZodValidationPipe,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: TransformInterceptor,
     },
     {
       provide: APP_INTERCEPTOR,
