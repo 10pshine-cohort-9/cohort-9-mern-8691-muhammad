@@ -13,7 +13,7 @@ import {
 } from '@nestjs/common';
 import type { Request } from 'express';
 import { AuthService } from './auth.service.js';
-import type { SafeUser } from './auth.types.js';
+import type { SafeUser, UserListItem } from './auth.types.js';
 import { ZodSerializerDto } from 'nestjs-zod';
 import {
   SignUpDto,
@@ -21,6 +21,7 @@ import {
   LogoutDto,
   ChangePasswordDto,
   SafeUserResponseDto,
+  UserListItemResponseDto,
   UpdateProfileDto,
 } from './auth.dto.js';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard.js';
@@ -65,7 +66,8 @@ export class AuthController {
 
   @Get('users')
   @UseGuards(JwtAuthGuard)
-  async listUsers(@CurrentUser() user: SafeUser): Promise<SafeUser[]> {
+  @ZodSerializerDto(UserListItemResponseDto)
+  async listUsers(@CurrentUser() user: SafeUser): Promise<UserListItem[]> {
     return this.authService.listUsers(user.id);
   }
 

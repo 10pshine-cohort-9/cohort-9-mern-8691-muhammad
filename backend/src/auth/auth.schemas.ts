@@ -51,3 +51,9 @@ export const safeUserSchema = z.object({
   username: z.string(),
   name: nameSchema.nullable().optional(),
 });
+
+export const userListItemSchema = z.object({
+  id: z.string(),
+  username: z.string(),
+  name: z.string().nullable().optional(),
+});

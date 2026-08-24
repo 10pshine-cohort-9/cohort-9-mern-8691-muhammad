@@ -15,16 +15,16 @@ export interface ApiResponse<T> {
 @Injectable()
 export class TransformInterceptor<T> implements NestInterceptor<
   T,
-  ApiResponse<T>
+  ApiResponse<T | null>
 > {
   intercept(
     _context: ExecutionContext,
-    next: CallHandler,
-  ): Observable<ApiResponse<T>> {
+    next: CallHandler<T>,
+  ): Observable<ApiResponse<T | null>> {
     return next.handle().pipe(
-      map((data) => ({
+      map((data: T | undefined) => ({
         success: true as const,
-        data: data !== undefined ? data : null,
+        data: data ?? null,
       })),
     );
   }

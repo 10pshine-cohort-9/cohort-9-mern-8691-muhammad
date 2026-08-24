@@ -37,19 +37,25 @@ export class JwtAuthGuard implements CanActivate {
         const user = await this.prisma.user.findUnique({
           where: { id: payload.sub },
         });
-        if (user) {
-          request.user = this.prisma.sanitizeUser(user);
-          return true;
+        if (!user) {
+          throw new UnauthorizedException('User not found');
         }
-      } catch {
+        request.user = this.prisma.sanitizeUser(user);
+        return true;
+      } catch (err) {
+        if (
+          err instanceof UnauthorizedException &&
+          err.message === 'User not found'
+        ) {
+          throw err;
+        }
         // If access token is expired then we go for token rotation using
         // refresh token and logging that is not necessary here
       }
     }
 
-    const refreshToken =
-      (request.cookies?.[AUTH_COOKIE_NAMES.REFRESH] as string | undefined) ||
-      (request.headers['x-refresh-token'] as string | undefined);
+    const refreshToken = request.cookies?.[AUTH_COOKIE_NAMES.REFRESH] as
+      string | undefined;
 
     if (refreshToken) {
       try {
@@ -67,7 +73,7 @@ export class JwtAuthGuard implements CanActivate {
       }
     }
 
-    throw new UnauthorizedException('JWT token is Missing');
+    throw new UnauthorizedException('JWT token is missing');
   }
 
   /**

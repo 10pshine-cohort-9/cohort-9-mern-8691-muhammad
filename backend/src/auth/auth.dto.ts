@@ -6,6 +6,7 @@ import {
   safeUserSchema,
   signUpSchema,
   updateProfileSchema,
+  userListItemSchema,
 } from './auth.schemas.js';
 
 export class LoginDto extends createZodDto(loginSchema) {}
@@ -14,3 +15,4 @@ export class UpdateProfileDto extends createZodDto(updateProfileSchema) {}
 export class ChangePasswordDto extends createZodDto(changePasswordSchema) {}
 export class LogoutDto extends createZodDto(logoutSchema) {}
 export class SafeUserResponseDto extends createZodDto(safeUserSchema) {}
+export class UserListItemResponseDto extends createZodDto(userListItemSchema) {}

@@ -96,11 +96,10 @@ export class TokenService {
 
   private initializeSecretForKind(kind: TokenKind): Uint8Array {
     const key = kind === 'access' ? 'JWT_ACCESS_SECRET' : 'JWT_REFRESH_SECRET';
-    const fallback =
-      kind === 'access'
-        ? 'default-notes-access-secret-32-chars-min'
-        : 'default-notes-refresh-secret-32-chars-min';
-    const secret = this.config.get<string>(key) ?? fallback;
+    const secret = this.config.get<string>(key)?.trim();
+    if (!secret || secret.length < 32) {
+      throw new Error(`${key} must be set and at least 32 characters long`);
+    }
     return new TextEncoder().encode(secret);
   }
 

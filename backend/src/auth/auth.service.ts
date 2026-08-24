@@ -18,12 +18,17 @@ import type {
   ChangePasswordInput,
   UpdateProfileInput,
   SafeUser,
+  UserListItem,
   AuthTokens,
 } from './auth.types.js';
 
 @Injectable()
 export class AuthService {
   private readonly refreshExpiresInMs: number;
+  private readonly inflightRefreshes = new Map<
+    string,
+    Promise<{ user: SafeUser; tokens: AuthTokens }>
+  >();
 
   constructor(
     private readonly prisma: PrismaService,
@@ -71,10 +76,10 @@ export class AuthService {
   }
 
   async login(input: LoginInput): Promise<SafeUser> {
-    const identifier = input.identifier.toLowerCase().trim();
+    const identifier = input.identifier.trim();
     const user = await this.prisma.user.findFirst({
       where: {
-        OR: [{ email: identifier }, { username: identifier }],
+        OR: [{ email: identifier.toLowerCase() }, { username: identifier }],
       },
     });
 
@@ -112,9 +117,10 @@ export class AuthService {
     input: UpdateProfileInput,
   ): Promise<SafeUser> {
     if (input.username) {
+      const username = input.username.trim();
       const existing = await this.prisma.user.findFirst({
         where: {
-          username: input.username,
+          username,
           NOT: { id: userId },
         },
       });
@@ -126,7 +132,7 @@ export class AuthService {
     const user = await this.prisma.user.update({
       where: { id: userId },
       data: {
-        username: input.username?.trim(),
+        username: input.username ? input.username.trim() : undefined,
         name: input.name !== undefined ? input.name.trim() || null : undefined,
       },
     });
@@ -170,27 +176,43 @@ export class AuthService {
     const payload = await this.tokens.verifyRefreshToken(refreshToken);
     const tokenHash = createHash('sha256').update(refreshToken).digest('hex');
 
-    const tokenRecord = await this.prisma.refreshToken.findUnique({
-      where: { tokenHash },
-    });
-
-    if (
-      tokenRecord?.userId !== payload.sub ||
-      tokenRecord.expiresAt <= new Date()
-    ) {
-      throw new UnauthorizedException('Refresh token is invalid or expired');
+    const inflight = this.inflightRefreshes.get(tokenHash);
+    if (inflight) {
+      return inflight;
     }
 
-    const user = await this.prisma.user.findUnique({
-      where: { id: payload.sub },
-    });
-    if (!user) {
-      throw new UnauthorizedException('User no longer exists');
-    }
+    const refreshPromise = (async () => {
+      const tokenRecord = await this.prisma.refreshToken.findUnique({
+        where: { tokenHash },
+      });
 
-    await this.prisma.refreshToken.delete({ where: { id: tokenRecord.id } });
-    const tokens = await this.issueTokens(user.id, user.email);
-    return { user: this.prisma.sanitizeUser(user), tokens };
+      if (
+        tokenRecord?.userId !== payload.sub ||
+        tokenRecord.expiresAt <= new Date()
+      ) {
+        throw new UnauthorizedException('Refresh token is invalid or expired');
+      }
+
+      const user = await this.prisma.user.findUnique({
+        where: { id: payload.sub },
+      });
+      if (!user) {
+        throw new UnauthorizedException('User no longer exists');
+      }
+
+      await this.prisma.refreshToken.delete({ where: { id: tokenRecord.id } });
+      const tokens = await this.issueTokens(user.id, user.email);
+      return { user: this.prisma.sanitizeUser(user), tokens };
+    })();
+
+    this.inflightRefreshes.set(tokenHash, refreshPromise);
+    try {
+      return await refreshPromise;
+    } finally {
+      setTimeout(() => {
+        this.inflightRefreshes.delete(tokenHash);
+      }, 5000);
+    }
   }
 
   async logout(
@@ -211,14 +233,13 @@ export class AuthService {
     return { message: 'Logged out from all devices successfully' };
   }
 
-  async listUsers(currentUserId: string): Promise<SafeUser[]> {
+  async listUsers(currentUserId: string): Promise<UserListItem[]> {
     const users = await this.prisma.user.findMany({
       where: {
         id: { not: currentUserId },
       },
       select: {
         id: true,
-        email: true,
         username: true,
         name: true,
       },

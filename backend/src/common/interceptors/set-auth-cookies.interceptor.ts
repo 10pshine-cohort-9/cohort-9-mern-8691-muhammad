@@ -2,13 +2,14 @@ import {
   type CallHandler,
   type ExecutionContext,
   Injectable,
+  InternalServerErrorException,
   type NestInterceptor,
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { from, type Observable } from 'rxjs';
 import { switchMap } from 'rxjs/operators';
 import { AuthService } from '../../auth/auth.service.js';
-import type { SafeUser } from '../../auth/auth.types.js';
+import { safeUserSchema } from '../../auth/auth.schemas.js';
 
 /**
  * This inteceptor set auth tokens into response cookies upon successful return
@@ -26,9 +27,18 @@ export class SetAuthCookiesInterceptor implements NestInterceptor {
       switchMap((data: unknown) =>
         from(
           (async () => {
-            const user = data as SafeUser | undefined;
-            if (user) {
-              await this.authService.issueAndSetAuthCookies(user, response);
+            const parsed = safeUserSchema.safeParse(data);
+            if (parsed.success) {
+              try {
+                await this.authService.issueAndSetAuthCookies(
+                  parsed.data,
+                  response,
+                );
+              } catch {
+                throw new InternalServerErrorException(
+                  'Failed to issue authentication credentials',
+                );
+              }
             }
             return data;
           })(),
