@@ -57,3 +57,5 @@ export const userListItemSchema = z.object({
   username: z.string(),
   name: z.string().nullable().optional(),
 });
+
+export const userListResponseSchema = z.array(userListItemSchema);

@@ -21,8 +21,8 @@ import {
   LogoutDto,
   ChangePasswordDto,
   SafeUserResponseDto,
-  UserListItemResponseDto,
   UpdateProfileDto,
+  UserListResponseDto,
 } from './auth.dto.js';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard.js';
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
@@ -66,7 +66,7 @@ export class AuthController {
 
   @Get('users')
   @UseGuards(JwtAuthGuard)
-  @ZodSerializerDto(UserListItemResponseDto)
+  @ZodSerializerDto(UserListResponseDto)
   async listUsers(@CurrentUser() user: SafeUser): Promise<UserListItem[]> {
     return this.authService.listUsers(user.id);
   }
