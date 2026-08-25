@@ -4,6 +4,7 @@ import { type ArgumentsHost, HttpStatus } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import type { PinoLogger } from 'nestjs-pino';
 import { PrismaExceptionFilter } from './prisma-exception.filter.js';
+import type { ApiErrorResponse } from './global-exception.filter.js';
 import { Prisma } from '../../generated/prisma/client.js';
 
 describe('PrismaExceptionFilter', () => {
@@ -49,9 +50,8 @@ describe('PrismaExceptionFilter', () => {
     error.meta = { target: ['email'] };
     filter.catch(error, argumentsHostMock);
     expect(responseMock.status.calledWith(HttpStatus.CONFLICT)).to.be.true;
-    expect(responseMock.json.firstCall.args[0].message).to.equal(
-      'A record with this email already exists',
-    );
+    const body = responseMock.json.firstCall.args[0] as ApiErrorResponse;
+    expect(body.message).to.equal('A record with this email already exists');
   });
 
   it('P2025 returns 404 Not Found', () => {

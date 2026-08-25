@@ -104,13 +104,20 @@ describe('GlobalExceptionFilter', () => {
   });
 
   describe('HttpException.ServerIssues', () => {
-    it('logs error for 500 server exceptions', () => {
-      const exception = new InternalServerErrorException('Database timeout');
+    it('logs error for 500 server exceptions and returns generic message', () => {
+      const exception = new InternalServerErrorException(
+        'Secret DB connection string: password123',
+      );
 
       filter.catch(exception, argumentsHostMock);
 
       expect(loggerMock.error.calledOnce).to.equal(true);
       expect(loggerMock.warn.called).to.equal(false);
+      const body = responseMock.json.firstCall.args[0] as ApiErrorResponse;
+      expect(body.message).to.equal('Internal server error');
+      expect(JSON.stringify(body)).not.to.include(
+        'Secret DB connection string',
+      );
     });
   });
 
