@@ -15,6 +15,7 @@ const dateStringSchema = z
 export const CreateNoteSchema = z.object({
   title: z
     .string()
+    .trim()
     .min(1, 'Title is required')
     .max(200, 'Title must be at most 200 characters'),
   content: z.string().max(200000, 'Note content is too long'),
@@ -34,8 +35,8 @@ export const QueryNotesSchema = z.object({
   search: z.string().max(200).optional(),
   sortBy: z.enum(NOTE_SORT_FIELDS).optional().default('updatedAt'),
   order: z.enum(SORT_ORDERS).optional().default('desc'),
-  pinnedOnly: z.coerce.boolean().optional().default(false),
-  favoritesOnly: z.coerce.boolean().optional().default(false),
+  pinnedOnly: z.stringbool().optional().default(false),
+  favoritesOnly: z.stringbool().optional().default(false),
   tags: z.string().max(500).optional(),
   dateFrom: dateStringSchema.optional(),
   dateTo: dateStringSchema.optional(),

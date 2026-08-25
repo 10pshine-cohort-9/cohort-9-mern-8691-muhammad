@@ -88,6 +88,7 @@ export class NotesService {
       : undefined;
 
     const where: Prisma.NoteWhereInput = {
+      ownerId: userId,
       ...(query.pinnedOnly ? { isPinned: true } : {}),
       ...(query.favoritesOnly ? { isFavorite: true } : {}),
       ...(query.dateFrom || query.dateTo
@@ -160,10 +161,7 @@ export class NotesService {
 
   async findOne(userId: string, noteId: string): Promise<NoteResponse> {
     const note = await this.getCompleteNote(noteId);
-    if (!note) {
-      this.logger.warn({ userId, noteId }, 'Note not found');
-      throw new NotFoundException('Note not found');
-    }
+    this.assertOwner(note, userId, noteId);
     return { ...this.withTagNames(note) } as NoteResponse;
   }
 
@@ -173,10 +171,7 @@ export class NotesService {
     input: UpdateNoteInput,
   ): Promise<NoteResponse> {
     const note = await this.getCompleteNote(noteId);
-    if (!note) {
-      this.logger.warn({ userId, noteId }, 'Note not found.');
-      throw new NotFoundException('Note not found');
-    }
+    this.assertOwner(note, userId, noteId);
 
     const isMeaningfulEdit =
       input.title !== undefined ||

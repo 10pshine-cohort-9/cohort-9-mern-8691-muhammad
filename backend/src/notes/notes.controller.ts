@@ -25,6 +25,7 @@ import {
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard.js';
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
 import type { SafeUser } from '../auth/auth.types.js';
+import type { NoteResponse } from './notes.types.js';
 
 @ApiTags('notes')
 @ApiBearerAuth()
@@ -39,7 +40,7 @@ export class NotesController {
   async create(
     @CurrentUser() user: SafeUser,
     @Body() dto: CreateNoteDto,
-  ): Promise<unknown> {
+  ): Promise<NoteResponse> {
     return this.notesService.create(user.id, dto);
   }
 
@@ -48,7 +49,7 @@ export class NotesController {
   async findAll(
     @CurrentUser() user: SafeUser,
     @Query() query: QueryNotesDto,
-  ): Promise<PaginatedResult<unknown>> {
+  ): Promise<PaginatedResult<NoteResponse>> {
     return this.notesService.findAll(user.id, query);
   }
 
@@ -57,7 +58,7 @@ export class NotesController {
   async findOne(
     @CurrentUser() user: SafeUser,
     @Param('id') id: string,
-  ): Promise<unknown> {
+  ): Promise<NoteResponse> {
     return this.notesService.findOne(user.id, id);
   }
 
@@ -67,7 +68,7 @@ export class NotesController {
     @CurrentUser() user: SafeUser,
     @Param('id') id: string,
     @Body() dto: UpdateNoteDto,
-  ): Promise<unknown> {
+  ): Promise<NoteResponse> {
     return this.notesService.update(user.id, id, dto);
   }
 
