@@ -8,6 +8,7 @@ import type { Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import type {
   CreateNoteInput,
+  NoteResponse,
   QueryNotesInput,
   UpdateNoteInput,
 } from './notes.types.js';
@@ -37,7 +38,7 @@ export class NotesService {
     @InjectPinoLogger(NotesService.name) private readonly logger: PinoLogger,
   ) {}
 
-  async create(ownerId: string, input: CreateNoteInput): Promise<unknown> {
+  async create(ownerId: string, input: CreateNoteInput): Promise<NoteResponse> {
     if (!input.title?.trim()) {
       throw new UnprocessableEntityException('Title is required');
     }
@@ -68,7 +69,7 @@ export class NotesService {
   async findAll(
     userId: string,
     query: Partial<QueryNotesInput>,
-  ): Promise<PaginatedResult<unknown>> {
+  ): Promise<PaginatedResult<NoteResponse>> {
     const page = Number(query.page) || 1;
     const limit = Number(query.limit) || 10;
     const sortBy = query.sortBy ?? 'updatedAt';
@@ -132,7 +133,7 @@ export class NotesService {
 
     const data = rawData.map((n: Record<string, unknown>) => ({
       ...this.withTagNames(n),
-    }));
+    })) as NoteResponse[];
 
     this.logger.info(
       {
@@ -157,20 +158,20 @@ export class NotesService {
     };
   }
 
-  async findOne(userId: string, noteId: string): Promise<unknown> {
+  async findOne(userId: string, noteId: string): Promise<NoteResponse> {
     const note = await this.getCompleteNote(noteId);
     if (!note) {
       this.logger.warn({ userId, noteId }, 'Note not found');
       throw new NotFoundException('Note not found');
     }
-    return { ...this.withTagNames(note) };
+    return { ...this.withTagNames(note) } as NoteResponse;
   }
 
   async update(
     userId: string,
     noteId: string,
     input: UpdateNoteInput,
-  ): Promise<unknown> {
+  ): Promise<NoteResponse> {
     const note = await this.getCompleteNote(noteId);
     if (!note) {
       this.logger.warn({ userId, noteId }, 'Note not found.');

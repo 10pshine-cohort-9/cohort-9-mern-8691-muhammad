@@ -46,12 +46,14 @@ export const NoteSchema = z.object({
   ownerId: z.string().optional(),
   title: z.string(),
   content: z.string(),
-  isPinned: z.boolean().optional(),
-  isFavorite: z.boolean().optional(),
-  createdAt: z.any().optional(),
-  updatedAt: z.any().optional(),
-  tags: z.any().optional(),
-  owner: z.any().optional(),
+  isPinned: z.boolean().default(false),
+  isFavorite: z.boolean().default(false),
+  ownerName: z.string().optional(),
+  tags: z.array(z.string()).default([]),
+  // We created these dates as union because we will be creating interconversions
+  // between them thus avoiding the duplicate schema
+  createdAt: z.union([z.string(), z.date()]),
+  updatedAt: z.union([z.string(), z.date()]),
 });
 
 export const NoteListMetaSchema = z.object({
