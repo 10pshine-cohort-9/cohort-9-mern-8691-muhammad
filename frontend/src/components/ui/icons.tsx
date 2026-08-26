@@ -4,6 +4,7 @@ import React, { forwardRef } from "react";
 import {
   SunIcon as AnimateSun,
   MoonIcon as AnimateMoon,
+  LoaderCircleIcon as AnimateLoader,
 } from "@animateicons/react/lucide";
 
 export interface IconProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -38,3 +39,4 @@ function wrapIcon(
 
 export const IconSun = wrapIcon(AnimateSun, "IconSun");
 export const IconMoon = wrapIcon(AnimateMoon, "IconMoon");
+export const IconLoader = wrapIcon(AnimateLoader, "IconLoader");
