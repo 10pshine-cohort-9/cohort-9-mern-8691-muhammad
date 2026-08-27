@@ -122,7 +122,16 @@ export async function request<T>(
   }
 
   if (response.status === 204) {
-    return undefined as T;
+    const result = schema.safeParse(undefined);
+    if (!result.success) {
+      throw new ApiError(
+        response.status,
+        "The server returned an unexpected empty response.",
+        result.error,
+      );
+    }
+    return result.data;
+  }
   }
 
   if (!isSuccessEnvelope(body)) {
