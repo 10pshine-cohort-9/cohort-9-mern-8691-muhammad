@@ -71,7 +71,6 @@ export const voidResponseSchema: z.ZodType<void> = z
   .or(z.undefined())
   .transform(() => undefined as void);
 
-// Inferred TypeScript Types
 export type SignUpInput = z.infer<typeof signUpSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;

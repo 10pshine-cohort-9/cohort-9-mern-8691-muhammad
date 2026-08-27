@@ -45,7 +45,6 @@ function ProfileContent() {
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSuccess, setPasswordSuccess] = useState(false);
 
-  // Creating the hooked state for update form of name and username
   const {
     register: registerProfile,
     handleSubmit: handleProfileSubmit,
@@ -59,7 +58,6 @@ function ProfileContent() {
     mode: "onBlur",
   });
 
-  // Creating hooked state for change of password form
   const {
     register: registerPassword,
     handleSubmit: handlePasswordSubmit,
@@ -86,7 +84,6 @@ function ProfileContent() {
       });
       await refreshUser();
       setProfileSuccess(true);
-      // We return back to false status to eliminate the alert from showing
       setTimeout(() => setProfileSuccess(false), 3000);
     } catch (err) {
       setProfileError(
