@@ -31,9 +31,10 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       ? exception.getStatus()
       : HttpStatus.INTERNAL_SERVER_ERROR;
 
-    const message = isHttp
-      ? this.extractMessage(exception.getResponse())
-      : 'Internal server error';
+    const message =
+      isHttp && status < 500
+        ? this.extractMessage(exception.getResponse())
+        : 'Internal server error';
 
     if (status >= 500) {
       this.logger.error(exception, 'Unhandled exception');

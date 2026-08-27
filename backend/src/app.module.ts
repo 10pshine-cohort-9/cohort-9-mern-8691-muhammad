@@ -12,6 +12,7 @@ import { pinoConfig } from './common/config/logger.config.js';
 import { TokenModule } from './token/token.module.js';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor.js';
 import { PrismaExceptionFilter } from './common/filters/prisma-exception.filter.js';
+import { NotesModule } from './notes/notes.module.js';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { PrismaExceptionFilter } from './common/filters/prisma-exception.filter.
     HealthModule,
     TokenModule,
     AuthModule,
+    NotesModule,
   ],
   providers: [
     {
