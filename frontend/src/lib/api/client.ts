@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { useAuthStore } from "@/lib/store/use-auth-store";
 
 export const API_URL =
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api";
@@ -96,6 +97,11 @@ export async function request<T>(
     !path.includes("/auth/login") &&
     !path.includes("/auth/sign-up")
   ) {
+    try {
+      useAuthStore.getState().setUser(null);
+    } catch {
+      // If store is not yet initialized then go on, we don't need to catch the errors.
+    }
     if (
       typeof window !== "undefined" &&
       !window.location.pathname.includes("/login") &&
@@ -131,7 +137,6 @@ export async function request<T>(
       );
     }
     return result.data;
-  }
   }
 
   if (!isSuccessEnvelope(body)) {

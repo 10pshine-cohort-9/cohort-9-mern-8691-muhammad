@@ -79,7 +79,6 @@ export function LoginForm() {
             hasError={!!errors.identifier}
             className="mt-1 rounded-xl"
           />
-          {/* These are under input real time error notifications */}
           {errors.identifier && (
             <p className="mt-1 text-xs text-destructive font-medium">
               {errors.identifier.message}
@@ -126,7 +125,6 @@ export function LoginForm() {
           )}
         </div>
 
-        {/* The following is the alert message shown on server issues */}
         <AnimatePresence>
           {serverError && (
             <motion.div
@@ -152,7 +150,6 @@ export function LoginForm() {
         </Button>
       </form>
 
-      {/* We provide a route at the bottom to signup form if user have no current account */}
       <div className="mt-6 pt-5 border-t border-border text-center text-sm text-muted-foreground">
         Don&apos;t have an account?
         <Link

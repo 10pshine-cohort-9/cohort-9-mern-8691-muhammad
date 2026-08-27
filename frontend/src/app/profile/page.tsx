@@ -37,7 +37,6 @@ function ProfileContent() {
     }
   }, [isInitialized, isAuthLoading, user, router]);
 
-  // These states are used to show timed alerts in UI for success and failures
   const [loggingOutAll, setLoggingOutAll] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [profileSuccess, setProfileSuccess] = useState(false);
@@ -45,7 +44,6 @@ function ProfileContent() {
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSuccess, setPasswordSuccess] = useState(false);
 
-  // Creating the hooked state for update form of name and username
   const {
     register: registerProfile,
     handleSubmit: handleProfileSubmit,
@@ -59,7 +57,6 @@ function ProfileContent() {
     mode: "onBlur",
   });
 
-  // Creating hooked state for change of password form
   const {
     register: registerPassword,
     handleSubmit: handlePasswordSubmit,
@@ -86,7 +83,6 @@ function ProfileContent() {
       });
       await refreshUser();
       setProfileSuccess(true);
-      // We return back to false status to eliminate the alert from showing
       setTimeout(() => setProfileSuccess(false), 3000);
     } catch (err) {
       setProfileError(
@@ -128,7 +124,6 @@ function ProfileContent() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35 }}
         >
-          {/* Profile Information Card with naming update form */}
           <div className="neo-card p-6 sm:p-8 mb-6 border border-border bg-card shadow-sm rounded-3xl">
             <div className="mb-8 flex items-center gap-4">
               <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-linear-to-tr from-emerald-600 to-teal-500 text-2xl font-black text-white shadow-lg shadow-emerald-500/20">
@@ -228,7 +223,6 @@ function ProfileContent() {
             </form>
           </div>
 
-          {/* Password Card with password update form */}
           <div className="neo-card p-6 sm:p-8 mb-6 border border-border bg-card shadow-sm rounded-3xl">
             <div className="mb-6">
               <h2 className="text-lg font-bold text-foreground">
@@ -323,7 +317,6 @@ function ProfileContent() {
             </form>
           </div>
 
-          {/* Session Management Card */}
           <div className="neo-card p-6 sm:p-8 border border-border bg-card shadow-sm rounded-3xl">
             <h2 className="text-lg font-bold text-foreground mb-1">
               Session Management

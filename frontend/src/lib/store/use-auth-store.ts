@@ -7,7 +7,6 @@ import type {
   UpdateProfileInput,
 } from "@/lib/schemas";
 
-// Created the Auth State interface with selective and atomic state setters and API caller functions
 interface AuthState {
   user: AuthUser | null;
   isLoading: boolean;
@@ -103,7 +102,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     try {
       await authApi.logoutAll();
     } catch {
-      // Ignored
+      // No need for resolving error because user will be eventually logged out even if its an error
     } finally {
       set({ user: null, isLoading: false, error: null });
     }
@@ -116,7 +115,6 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 }));
 
-// These are selective selector functions for isolated rerenders
 export const useAuthUser = () => useAuthStore((s) => s.user);
 export const useAuthLoading = () => useAuthStore((s) => s.isLoading);
 export const useAuthInitialized = () => useAuthStore((s) => s.isInitialized);

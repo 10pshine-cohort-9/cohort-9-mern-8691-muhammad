@@ -11,7 +11,6 @@ interface AuthShellProps {
   mode?: "login" | "signup";
 }
 
-// We created two side shell based style, left side detailing our App highlights and right side with authentication forms
 export function AuthShell({ children, mode: _mode }: Readonly<AuthShellProps>) {
   return (
     <div className="min-h-screen w-full flex flex-col lg:grid lg:grid-cols-12 bg-background relative overflow-hidden">
@@ -19,9 +18,7 @@ export function AuthShell({ children, mode: _mode }: Readonly<AuthShellProps>) {
         <ThemeToggle />
       </div>
 
-      {/* Left App Showcase Panel */}
       <div className="relative lg:col-span-5 xl:col-span-5 bg-linear-to-br from-blue-950/20 via-background to-indigo-950/20 dark:from-blue-950/40 dark:via-background dark:to-slate-950/50 border-b lg:border-b-0 lg:border-r border-border flex flex-col justify-between p-8 sm:p-12 lg:p-14 z-10">
-        {/* Shadcn based Background Geometric Visual Accents */}
         <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-25 dark:opacity-15">
           <div className="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-blue-500/20 blur-3xl" />
           <div className="absolute -bottom-24 -right-24 w-96 h-96 rounded-full bg-indigo-500/20 blur-3xl" />
@@ -61,7 +58,6 @@ export function AuthShell({ children, mode: _mode }: Readonly<AuthShellProps>) {
         </div>
       </div>
 
-      {/* Right Auth Forms Panel */}
       <div className="lg:col-span-7 xl:col-span-7 flex items-center justify-center p-6 sm:p-10 lg:p-16 relative">
         <motion.div
           initial={{ opacity: 0, y: 16 }}
