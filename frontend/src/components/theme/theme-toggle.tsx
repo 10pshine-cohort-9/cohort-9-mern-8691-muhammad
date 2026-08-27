@@ -6,21 +6,18 @@ import { motion, AnimatePresence } from "motion/react";
 import { IconSun, IconMoon } from "@/components/ui/icons";
 
 export function ThemeToggle() {
-  const { theme, setTheme } = useTheme();
-  const [loading, setloading] = useState(false);
-  useEffect(() => setloading(true), []);
-
+  const { resolvedTheme, setTheme } = useTheme();
+  const [loading, setLoading] = useState(false);
+  useEffect(() => setLoading(true), []);
   if (!loading) return <div className="h-9 w-9" />;
-
-  const isDark = theme === "dark";
-
+  const isDark = resolvedTheme === "dark";
   return (
     <button
       type="button"
       aria-label="Toggle theme"
       title={isDark ? "Switch to Light mode" : "Switch to Dark mode"}
       onClick={() => setTheme(isDark ? "light" : "dark")}
-      className="relative flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-secondary/80 hover:bg-secondary text-foreground transition-colors shadow-sm"
+      className="relative flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-secondary/80 text-foreground shadow-sm transition-colors hover:bg-secondary"
     >
       <AnimatePresence mode="wait" initial={false}>
         <motion.span

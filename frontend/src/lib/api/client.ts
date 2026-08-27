@@ -16,6 +16,32 @@ export interface RequestOptions extends RequestInit {
   auth?: boolean;
 }
 
+interface ApiErrorBody {
+  message?: string | string[];
+  [key: string]: unknown;
+}
+
+interface ApiSuccessBody {
+  success: boolean;
+  data: unknown;
+  [key: string]: unknown;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function isErrorBody(value: unknown): value is ApiErrorBody {
+  return (
+    isRecord(value) &&
+    (typeof value.message === "string" || Array.isArray(value.message))
+  );
+}
+
+function isSuccessBody(value: unknown): value is ApiSuccessBody {
+  return isRecord(value) && "success" in value && "data" in value;
+}
+
 /**
  * This is a fetch wrapper that uses HTTP only cookies to be attached with requests
  */
@@ -28,19 +54,49 @@ export async function request<T>(
   const defaultHeaders: HeadersInit =
     rest.body instanceof FormData ? {} : { "Content-Type": "application/json" };
 
-  const response = await fetch(`${API_URL}${path}`, {
-    ...rest,
-    credentials: "include",
-    headers: {
-      ...defaultHeaders,
-      ...headers,
-    },
-  });
+  // Here we are converting all the headers objects into single format so that merging of headers is proper
+  const requestHeaders = new Headers(defaultHeaders);
+  if (headers) {
+    new Headers(headers).forEach((value, key) => {
+      requestHeaders.set(key, value);
+    });
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(`${API_URL}${path}`, {
+      ...rest,
+      credentials: "include",
+      headers: requestHeaders,
+    });
+  } catch (error) {
+    // We now throw the error if the server is not even accessible
+    throw new ApiError(
+      0,
+      error instanceof Error
+        ? error.message
+        : "Unable to connect to the server. Please try again.",
+      error,
+    );
+  }
 
   const isJson = response.headers
     .get("content-type")
     ?.includes("application/json");
-  const body = isJson ? await response.json() : undefined;
+
+  let body: unknown;
+  if (isJson) {
+    try {
+      body = await response.json();
+    } catch (error) {
+      // We now throw the error when the returned api response is not parseable
+      throw new ApiError(
+        response.status,
+        "The server returned an invalid response.",
+        error,
+      );
+    }
+  }
 
   if (
     response.status === 401 &&
@@ -58,9 +114,14 @@ export async function request<T>(
   }
 
   if (!response.ok) {
-    const message = Array.isArray(body?.message)
-      ? body.message.join(", ")
-      : body?.message;
+    let message: string | undefined;
+    if (isErrorBody(body)) {
+      if (Array.isArray(body.message)) {
+        message = body.message.join(", ");
+      } else {
+        message = body.message;
+      }
+    }
     throw new ApiError(
       response.status,
       message || "Something went wrong. Please try again.",
@@ -68,7 +129,7 @@ export async function request<T>(
     );
   }
 
-  if (body && typeof body === "object" && "success" in body && "data" in body) {
+  if (isSuccessBody(body)) {
     return body.data as T;
   }
 
