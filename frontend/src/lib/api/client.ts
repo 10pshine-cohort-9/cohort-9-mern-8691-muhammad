@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 export const API_URL =
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api";
 
@@ -21,12 +23,6 @@ interface ApiErrorBody {
   [key: string]: unknown;
 }
 
-interface ApiSuccessBody {
-  success: boolean;
-  data: unknown;
-  [key: string]: unknown;
-}
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
@@ -38,24 +34,22 @@ function isErrorBody(value: unknown): value is ApiErrorBody {
   );
 }
 
-function isSuccessBody(value: unknown): value is ApiSuccessBody {
-  return isRecord(value) && "success" in value && "data" in value;
+function isSuccessEnvelope(
+  value: unknown,
+): value is { success: true; data: unknown } {
+  return isRecord(value) && value.success === true && "data" in value;
 }
 
-/**
- * This is a fetch wrapper that uses HTTP only cookies to be attached with requests
- */
 export async function request<T>(
   path: string,
+  schema: z.ZodType<T>,
   options: RequestOptions = {},
 ): Promise<T> {
   const { auth = true, headers, ...rest } = options;
-
   const defaultHeaders: HeadersInit =
     rest.body instanceof FormData ? {} : { "Content-Type": "application/json" };
-
-  // Here we are converting all the headers objects into single format so that merging of headers is proper
   const requestHeaders = new Headers(defaultHeaders);
+
   if (headers) {
     new Headers(headers).forEach((value, key) => {
       requestHeaders.set(key, value);
@@ -70,7 +64,6 @@ export async function request<T>(
       headers: requestHeaders,
     });
   } catch (error) {
-    // We now throw the error if the server is not even accessible
     throw new ApiError(
       0,
       error instanceof Error
@@ -83,16 +76,15 @@ export async function request<T>(
   const isJson = response.headers
     .get("content-type")
     ?.includes("application/json");
-
   let body: unknown;
+
   if (isJson) {
     try {
       body = await response.json();
     } catch (error) {
-      // We now throw the error when the returned api response is not parseable
       throw new ApiError(
         response.status,
-        "The server returned an invalid response.",
+        "The server returned an invalid JSON response.",
         error,
       );
     }
@@ -129,26 +121,45 @@ export async function request<T>(
     );
   }
 
-  if (isSuccessBody(body)) {
-    return body.data as T;
+  if (response.status === 204) {
+    return undefined as T;
   }
 
-  return body as T;
+  if (!isSuccessEnvelope(body)) {
+    throw new ApiError(
+      response.status,
+      "The server returned an invalid response.",
+      body,
+    );
+  }
+
+  const result = schema.safeParse(body.data);
+  if (!result.success) {
+    throw new ApiError(
+      response.status,
+      "The server returned data in an unexpected format.",
+      result.error,
+    );
+  }
+
+  return result.data;
 }
 
-type QueryValue = string | number | boolean | undefined | null;
+export type QueryValue = string | number | boolean | Date | undefined | null;
 
 export function buildQueryString<T extends Record<string, QueryValue>>(
   query: T,
 ): string {
   const params = new URLSearchParams();
-
   Object.entries(query).forEach(([key, value]) => {
     if (value !== undefined && value !== null && value !== "") {
-      params.set(key, String(value));
+      if (value instanceof Date) {
+        params.set(key, value.toISOString());
+      } else {
+        params.set(key, String(value));
+      }
     }
   });
-
   const qs = params.toString();
   return qs ? `?${qs}` : "";
 }
