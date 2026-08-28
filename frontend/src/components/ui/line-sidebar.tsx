@@ -111,7 +111,6 @@ export function LineSidebar({
       onMouseLeave={handleMouseLeave}
       className={cn("relative flex flex-col select-none py-2", className)}
     >
-      {/* Background Vertical Track */}
       {showMarker && (
         <div
           className="absolute left-0 top-0 bottom-0 w-0.5 rounded-full bg-border"
@@ -119,7 +118,6 @@ export function LineSidebar({
         />
       )}
 
-      {/* Active Indicator Bar */}
       {showMarker && (
         <div
           className="absolute left-0 w-0.75 rounded-full transition-all duration-300 ease-out z-10 shadow-sm"
@@ -132,7 +130,6 @@ export function LineSidebar({
         />
       )}
 
-      {/* Navigation Items */}
       <div className="flex flex-col" style={{ gap: `${itemGap}px` }}>
         {items.map((label, index) => {
           const isActive = index === activeIndex;
@@ -159,7 +156,6 @@ export function LineSidebar({
               )}
             >
               <div className="flex items-center gap-2.5">
-                {/* Visual Tick / Index Indicator */}
                 {showIndex ? (
                   <span
                     className={cn(
@@ -189,7 +185,6 @@ export function LineSidebar({
                 </span>
               </div>
 
-              {/* Optional Count Badge */}
               {badge !== undefined && (
                 <span
                   className={cn(

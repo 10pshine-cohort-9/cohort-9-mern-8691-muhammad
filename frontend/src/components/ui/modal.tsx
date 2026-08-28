@@ -11,7 +11,6 @@ export interface ModalProps {
   title?: string;
   children: ReactNode;
   footer?: ReactNode;
-  /** Extra classes for the dialog panel */
   className?: string;
   bodyClassName?: string;
   zIndex?: number;
