@@ -20,6 +20,7 @@ import {
   PlusIcon as AnimatePlus,
   ArrowRightIcon as AnimateArrowRight,
   XIcon as AnimateX,
+  TagIcon as AnimateTag,
 } from "@animateicons/react/lucide";
 
 export interface IconProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -70,6 +71,7 @@ export const IconSearch = wrapIcon(AnimateSearch, "IconSearch");
 export const IconPlus = wrapIcon(AnimatePlus, "IconPlus");
 export const IconArrowRight = wrapIcon(AnimateArrowRight, "IconArrowRight");
 export const IconClose = wrapIcon(AnimateX, "IconClose");
+export const IconTag = wrapIcon(AnimateTag, "IconTag");
 
 export function IconPinFilled({
   size = 18,
