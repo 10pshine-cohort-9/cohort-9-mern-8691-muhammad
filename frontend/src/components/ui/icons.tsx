@@ -11,6 +11,8 @@ import {
   EyeClosedIcon as AnimateEyeClosed,
   UserRoundIcon as AnimateUserCircle,
   LogOutIcon as AnimateLogOut,
+  FileTextIcon as AnimateFileText,
+  ArrowLeftIcon as AnimateArrowLeft,
 } from "@animateicons/react/lucide";
 
 export interface IconProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -52,3 +54,5 @@ export const IconEye = wrapIcon(AnimateEye, "IconEye");
 export const IconEyeClosed = wrapIcon(AnimateEyeClosed, "IconEyeClosed");
 export const IconUserCircle = wrapIcon(AnimateUserCircle, "IconUserCircle");
 export const IconLogout = wrapIcon(AnimateLogOut, "IconLogout");
+export const IconNotes = wrapIcon(AnimateFileText, "IconNotes");
+export const IconArrowLeft = wrapIcon(AnimateArrowLeft, "IconArrowLeft");

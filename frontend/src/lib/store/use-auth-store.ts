@@ -90,28 +90,48 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   logout: async () => {
     try {
+      set({ isLoading: true, error: null });
       await authApi.logout();
-    } catch {
-      // No need for resolving error because user will be eventually logged out even if its an error
+    } catch (err) {
+      set({
+        error: err instanceof Error ? err.message : "Logout failed",
+      });
     } finally {
-      set({ user: null, isLoading: false, error: null });
+      set({ user: null, isLoading: false });
+      if (typeof window !== "undefined" && process.env.NODE_ENV !== "test") {
+        window.location.href = "/login";
+      }
     }
   },
 
   logoutAll: async () => {
     try {
+      set({ isLoading: true, error: null });
       await authApi.logoutAll();
-    } catch {
-      // No need for resolving error because user will be eventually logged out even if its an error
+    } catch (err) {
+      set({
+        error: err instanceof Error ? err.message : "Logout all failed",
+      });
     } finally {
-      set({ user: null, isLoading: false, error: null });
+      set({ user: null, isLoading: false });
+      if (typeof window !== "undefined" && process.env.NODE_ENV !== "test") {
+        window.location.href = "/login";
+      }
     }
   },
 
   updateProfile: async (data: UpdateProfileInput) => {
-    const updated = await authApi.updateProfile(data);
-    set({ user: updated });
-    return updated;
+    try {
+      set({ error: null });
+      const updated = await authApi.updateProfile(data);
+      set({ user: updated, error: null });
+      return updated;
+    } catch (err) {
+      set({
+        error: err instanceof Error ? err.message : "Failed to update profile",
+      });
+      throw err;
+    }
   },
 }));
 

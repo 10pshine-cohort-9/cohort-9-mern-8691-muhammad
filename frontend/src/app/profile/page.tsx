@@ -15,6 +15,7 @@ import { Alert } from "@/components/ui/alert";
 import { useAuthStore } from "@/lib/store";
 import { ApiError, authApi } from "@/lib/api";
 import { getUserInitials } from "@/lib/utils";
+import { toast } from "sonner";
 import {
   type ChangePasswordInput,
   changePasswordSchema,
@@ -330,8 +331,15 @@ function ProfileContent() {
                 type="button"
                 variant="destructive"
                 onClick={async () => {
-                  await logout();
-                  router.push("/login");
+                  try {
+                    await logout();
+                  } catch (err) {
+                    toast.error(
+                      err instanceof ApiError
+                        ? err.message
+                        : "Failed to log out. Please try again.",
+                    );
+                  }
                 }}
                 className="flex-1 rounded-xl"
               >
@@ -346,7 +354,12 @@ function ProfileContent() {
                   setLoggingOutAll(true);
                   try {
                     await logoutAll();
-                    router.push("/login");
+                  } catch (err) {
+                    toast.error(
+                      err instanceof ApiError
+                        ? err.message
+                        : "Failed to log out of all devices.",
+                    );
                   } finally {
                     setLoggingOutAll(false);
                   }

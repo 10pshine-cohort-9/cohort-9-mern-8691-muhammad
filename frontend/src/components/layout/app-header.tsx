@@ -5,17 +5,12 @@ import { motion } from "motion/react";
 import { IconUserCircle, IconLogout } from "@/components/ui/icons";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { useAuthStore } from "@/lib/store";
-import { useRouter } from "next/router";
+import { ApiError } from "@/lib/api";
+import { toast } from "sonner";
 
 export function AppHeader() {
-  const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
-
-  const handleLogout = async () => {
-    await logout();
-    router.push("/login");
-  };
 
   return (
     <motion.header
@@ -46,7 +41,17 @@ export function AppHeader() {
             </Link>
             <button
               type="button"
-              onClick={() => handleLogout()}
+              onClick={async () => {
+                try {
+                  await logout();
+                } catch (err) {
+                  toast.error(
+                    err instanceof ApiError
+                      ? err.message
+                      : "Failed to log out.",
+                  );
+                }
+              }}
               aria-label="Log out"
               className="flex h-9 w-9 items-center justify-center rounded-xl border border-destructive/20 bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors"
               title="Log out"

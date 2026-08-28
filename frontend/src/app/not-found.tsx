@@ -1,11 +1,11 @@
-'use client';
+"use client";
 
-import React from 'react';
-import Image from 'next/image';
-import Link from 'next/link';
-import { IconArrowLeft, IconNotes } from '@/components/ui/icons';
+import React from "react";
+import Image from "next/image";
+import Link from "next/link";
+import { IconArrowLeft, IconNotes } from "@/components/ui/icons";
 
-export default function NotFoundPage() {
+export default function NotFoundPage(): React.ReactElement {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-background px-4 text-center">
       <div className="relative mb-6 max-w-md w-full flex justify-center">
@@ -29,7 +29,8 @@ export default function NotFoundPage() {
         Oops! Page Not Found
       </h1>
       <p className="text-muted-foreground max-w-md text-base sm:text-lg mb-8">
-        The memory or page you are looking for has either been moved, deleted, or never existed in the universe.
+        The memory or page you are looking for has either been moved, deleted,
+        or never existed in the universe.
       </p>
 
       <div className="flex flex-col sm:flex-row items-center gap-3">
