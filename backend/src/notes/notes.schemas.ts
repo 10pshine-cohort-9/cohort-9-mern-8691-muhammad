@@ -12,13 +12,26 @@ const dateStringSchema = z
     message: 'must be a valid date string',
   });
 
+export const TiptapDocSchema = z
+  .object({
+    type: z.string().default('doc'),
+    content: z.array(z.record(z.string(), z.unknown())).optional().default([]),
+  })
+  .loose();
+
+export const TiptapContentSchema = z.union([
+  TiptapDocSchema,
+  z.record(z.string(), z.unknown()),
+  z.string(),
+]);
+
 export const CreateNoteSchema = z.object({
   title: z
     .string()
     .trim()
     .min(1, 'Title is required')
     .max(200, 'Title must be at most 200 characters'),
-  content: z.string().max(200000, 'Note content is too long'),
+  content: TiptapContentSchema.optional().default({ type: 'doc', content: [] }),
   isPinned: z.boolean().optional(),
   isFavorite: z.boolean().optional(),
   tags: z
@@ -27,7 +40,21 @@ export const CreateNoteSchema = z.object({
     .optional(),
 });
 
-export const UpdateNoteSchema = CreateNoteSchema.partial();
+export const UpdateNoteSchema = z.object({
+  title: z
+    .string()
+    .trim()
+    .min(1, 'Title is required')
+    .max(200, 'Title must be at most 200 characters')
+    .optional(),
+  content: TiptapContentSchema.optional(),
+  isPinned: z.boolean().optional(),
+  isFavorite: z.boolean().optional(),
+  tags: z
+    .array(z.string().max(50, 'Each tag must be at most 50 characters'))
+    .max(20, 'A note can have at most 20 tags')
+    .optional(),
+});
 
 export const QueryNotesSchema = z.object({
   page: z.coerce.number().int().min(1).optional().default(1),
@@ -46,13 +73,11 @@ export const NoteSchema = z.object({
   id: z.string(),
   ownerId: z.string().optional(),
   title: z.string(),
-  content: z.string(),
+  content: TiptapContentSchema,
   isPinned: z.boolean().default(false),
   isFavorite: z.boolean().default(false),
   ownerName: z.string().optional(),
   tags: z.array(z.string()).default([]),
-  // We created these dates as union because we will be creating interconversions
-  // between them thus avoiding the duplicate schema
   createdAt: z.union([z.string(), z.date()]),
   updatedAt: z.union([z.string(), z.date()]),
 });

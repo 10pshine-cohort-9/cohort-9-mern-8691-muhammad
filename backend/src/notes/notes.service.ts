@@ -42,10 +42,11 @@ export class NotesService {
     if (!input.title?.trim()) {
       throw new UnprocessableEntityException('Title is required');
     }
+    const content = this.ensureTiptapJson(input.content);
     const note = await this.prisma.note.create({
       data: {
         title: input.title.trim(),
-        content: input.content,
+        content: content as Prisma.InputJsonValue,
         isPinned: input.isPinned ?? false,
         isFavorite: input.isFavorite ?? false,
         ownerId,
@@ -63,7 +64,7 @@ export class NotesService {
     return {
       ...note,
       tags: input.tags ? this.normalizeTagNames(input.tags) : [],
-    };
+    } as NoteResponse;
   }
 
   async findAll(
@@ -106,7 +107,7 @@ export class NotesService {
         ? {
             OR: [
               { title: { contains: query.search, mode: 'insensitive' } },
-              { content: { contains: query.search, mode: 'insensitive' } },
+              { content: { string_contains: query.search } },
               {
                 tags: {
                   some: {
@@ -178,11 +179,16 @@ export class NotesService {
       input.content !== undefined ||
       input.tags !== undefined;
 
+    const content =
+      input.content !== undefined
+        ? (this.ensureTiptapJson(input.content) as Prisma.InputJsonValue)
+        : undefined;
+
     const updated = await this.prisma.note.update({
       where: { id: noteId },
       data: {
         ...(input.title !== undefined ? { title: input.title.trim() } : {}),
-        ...(input.content !== undefined ? { content: input.content } : {}),
+        ...(content !== undefined ? { content } : {}),
         ...(input.isPinned !== undefined ? { isPinned: input.isPinned } : {}),
         ...(input.isFavorite !== undefined
           ? { isFavorite: input.isFavorite }
@@ -203,7 +209,7 @@ export class NotesService {
       'Note updated',
     );
 
-    return { ...updated, tags };
+    return { ...updated, tags } as NoteResponse;
   }
 
   async remove(ownerId: string, noteId: string): Promise<void> {
@@ -240,6 +246,39 @@ export class NotesService {
     return Array.from(
       new Set(tags.map((t) => t.trim().toLowerCase()).filter(Boolean)),
     );
+  }
+
+  private ensureTiptapJson(content: unknown): Prisma.InputJsonValue {
+    if (!content) {
+      return { type: 'doc', content: [] };
+    }
+    if (typeof content === 'object' && content !== null) {
+      if ('type' in content) return content as Prisma.InputJsonValue;
+      return { type: 'doc', content: [] };
+    }
+    if (typeof content === 'string') {
+      const trimmed = content.trim();
+      if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+        try {
+          const parsed = JSON.parse(trimmed);
+          if (parsed && typeof parsed === 'object' && 'type' in parsed) {
+            return parsed as Prisma.InputJsonValue;
+          }
+        } catch {
+          // if the content is not a json then we are going for a fallback to normal text
+        }
+      }
+      return {
+        type: 'doc',
+        content: [
+          {
+            type: 'paragraph',
+            content: [{ type: 'text', text: trimmed }],
+          },
+        ],
+      };
+    }
+    return { type: 'doc', content: [] };
   }
 
   // This keeps synchronization between the main tags table and the respective tags of a note without any repetition
