@@ -13,6 +13,9 @@ import {
   LogOutIcon as AnimateLogOut,
   FileTextIcon as AnimateFileText,
   ArrowLeftIcon as AnimateArrowLeft,
+  PinIcon as AnimatePin,
+  StarIcon as AnimateStar,
+  Trash2Icon as AnimateTrash,
 } from "@animateicons/react/lucide";
 
 export interface IconProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -56,3 +59,38 @@ export const IconUserCircle = wrapIcon(AnimateUserCircle, "IconUserCircle");
 export const IconLogout = wrapIcon(AnimateLogOut, "IconLogout");
 export const IconNotes = wrapIcon(AnimateFileText, "IconNotes");
 export const IconArrowLeft = wrapIcon(AnimateArrowLeft, "IconArrowLeft");
+export const IconPin = wrapIcon(AnimatePin, "IconPin");
+export const IconStar = wrapIcon(AnimateStar, "IconStar");
+export const IconTrash = wrapIcon(AnimateTrash, "IconTrash");
+
+export function IconPinFilled({
+  size = 18,
+  className = "",
+}: Readonly<{
+  size?: number;
+  className?: string;
+}>) {
+  return (
+    <div
+      className={`inline-flex items-center justify-center shrink-0 text-amber-500 ${className}`}
+    >
+      <AnimatePin size={size} isAnimated={true} />
+    </div>
+  );
+}
+
+export function IconStarFilled({
+  size = 18,
+  className = "",
+}: Readonly<{
+  size?: number;
+  className?: string;
+}>) {
+  return (
+    <div
+      className={`inline-flex items-center justify-center shrink-0 text-rose-500 ${className}`}
+    >
+      <AnimateStar size={size} isAnimated={true} />
+    </div>
+  );
+}
