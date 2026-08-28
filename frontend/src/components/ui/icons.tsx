@@ -16,6 +16,8 @@ import {
   PinIcon as AnimatePin,
   StarIcon as AnimateStar,
   Trash2Icon as AnimateTrash,
+  SearchIcon as AnimateSearch,
+  PlusIcon as AnimatePlus,
 } from "@animateicons/react/lucide";
 
 export interface IconProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -62,6 +64,8 @@ export const IconArrowLeft = wrapIcon(AnimateArrowLeft, "IconArrowLeft");
 export const IconPin = wrapIcon(AnimatePin, "IconPin");
 export const IconStar = wrapIcon(AnimateStar, "IconStar");
 export const IconTrash = wrapIcon(AnimateTrash, "IconTrash");
+export const IconSearch = wrapIcon(AnimateSearch, "IconSearch");
+export const IconPlus = wrapIcon(AnimatePlus, "IconPlus");
 
 export function IconPinFilled({
   size = 18,
