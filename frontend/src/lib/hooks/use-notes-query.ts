@@ -25,10 +25,6 @@ export function useNotesQuery(query: NotesQueryInput) {
   });
 }
 
-/**
- * All these mutations are made for optimistic ui updates while the backend keep updating sideways
- */
-
 export function useTogglePinMutation() {
   const queryClient = useQueryClient();
 

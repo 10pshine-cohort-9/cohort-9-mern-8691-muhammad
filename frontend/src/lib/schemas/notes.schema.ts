@@ -12,13 +12,26 @@ const dateStringSchema = z
     message: "must be a valid date string",
   });
 
+export const tiptapDocSchema = z
+  .object({
+    type: z.string().default("doc"),
+    content: z.array(z.record(z.string(), z.unknown())).optional().default([]),
+  })
+  .loose();
+
+export const tiptapContentSchema = z.union([
+  tiptapDocSchema,
+  z.record(z.string(), z.unknown()),
+  z.string(),
+]);
+
 export const createNoteSchema = z.object({
   title: z
     .string()
     .trim()
     .min(1, "Title is required")
     .max(200, "Title must be at most 200 characters"),
-  content: z.string().max(200000, "Note content is too long").default(""),
+  content: tiptapContentSchema.optional().default({ type: "doc", content: [] }),
   isPinned: z.boolean().optional().default(false),
   isFavorite: z.boolean().optional().default(false),
   tags: z
@@ -28,7 +41,21 @@ export const createNoteSchema = z.object({
     .default([]),
 });
 
-export const updateNoteSchema = createNoteSchema.partial();
+export const updateNoteSchema = z.object({
+  title: z
+    .string()
+    .trim()
+    .min(1, "Title is required")
+    .max(200, "Title must be at most 200 characters")
+    .optional(),
+  content: tiptapContentSchema.optional(),
+  isPinned: z.boolean().optional(),
+  isFavorite: z.boolean().optional(),
+  tags: z
+    .array(z.string().max(50, "Each tag must be at most 50 characters"))
+    .max(20, "A note can have at most 20 tags")
+    .optional(),
+});
 
 export const queryNotesSchema = z.object({
   page: z.number().int().min(1).optional().default(1),
@@ -47,7 +74,7 @@ export const noteSchema = z.object({
   id: z.string(),
   ownerId: z.string().optional(),
   title: z.string(),
-  content: z.string(),
+  content: tiptapContentSchema,
   isPinned: z.boolean().default(false),
   isFavorite: z.boolean().default(false),
   ownerName: z.string().optional(),
@@ -74,7 +101,13 @@ export const noteFiltersSchema = queryNotesSchema.pick({
   tags: true,
 });
 
-// Inferred TypeScript Types
+export const CreateNoteSchema = createNoteSchema;
+export const UpdateNoteSchema = updateNoteSchema;
+export const QueryNotesSchema = queryNotesSchema;
+export const NoteSchema = noteSchema;
+export const NoteListMetaSchema = noteListMetaSchema;
+export const NoteListResponseSchema = noteListResponseSchema;
+
 export type CreateNoteInput = z.infer<typeof createNoteSchema>;
 export type UpdateNoteInput = z.infer<typeof updateNoteSchema>;
 export type NotesQueryInput = z.input<typeof queryNotesSchema>;
@@ -83,3 +116,5 @@ export type NoteFilters = z.infer<typeof noteFiltersSchema>;
 export type Note = z.infer<typeof noteSchema>;
 export type NoteListMeta = z.infer<typeof noteListMetaSchema>;
 export type PaginatedNotes = z.infer<typeof noteListResponseSchema>;
+
+export { type JSONContent } from "@tiptap/core";
