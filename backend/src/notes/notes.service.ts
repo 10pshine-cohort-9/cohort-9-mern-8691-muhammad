@@ -1,4 +1,5 @@
 import {
+  ConflictException,
   Injectable,
   NotFoundException,
   UnprocessableEntityException,
@@ -13,10 +14,13 @@ import type { Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { TiptapDocSchema } from './notes.schemas.js';
 import type {
+  CollaboratorResponse,
   CreateNoteInput,
+  InviteCollaboratorInput,
   NoteResponse,
   PaginatedResult,
   QueryNotesInput,
+  UpdateCollaboratorInput,
   UpdateNoteInput,
   ViewerRole,
 } from './notes.types.js';
@@ -269,17 +273,12 @@ export class NotesService {
     },
     userId?: string,
   ): Record<string, unknown> {
+    const { collaborators, owner, ...rest } = note;
     const myCollab =
-      (userId
-        ? note.collaborators?.find((c) => c.userId === userId)
-        : undefined) ?? note.collaborators?.[0];
+      (userId ? collaborators?.find((c) => c.userId === userId) : undefined) ??
+      collaborators?.[0];
     const permission = myCollab?.permission ?? 'READ';
-    const ownerName = note.owner
-      ? note.owner.name || note.owner.username
-      : undefined;
-    const rest = { ...note };
-    delete (rest as Record<string, unknown>).collaborators;
-    delete (rest as Record<string, unknown>).owner;
+    const ownerName = owner ? owner.name || owner.username : undefined;
     return {
       ...this.withTagNames(rest),
       isPinned: myCollab?.isPinned ?? false,
@@ -458,13 +457,9 @@ export class NotesService {
       this.logger.warn({ userId, noteId }, 'Note access denied');
       throw new NotFoundException('Note not found');
     }
-    const rest = { ...note };
-    const myCollab = note.collaborators.find((c) => c.userId === userId);
-    delete (rest as Record<string, unknown>).collaborators;
-    const ownerName = note.owner
-      ? note.owner.name || note.owner.username
-      : undefined;
-    delete (rest as Record<string, unknown>).owner;
+    const { collaborators, owner, ...rest } = note;
+    const myCollab = collaborators.find((c) => c.userId === userId);
+    const ownerName = owner ? owner.name || owner.username : undefined;
     return {
       ...this.withTagNames(rest),
       ...(role !== 'owner'
@@ -606,7 +601,7 @@ export class NotesService {
         : note.tags.map((t) => t.name);
 
     this.logger.info(
-      { userId, noteId, role, updated, tags, versioned: isMeaningfulEdit },
+      { userId, noteId, role, tags, updated, versioned: isMeaningfulEdit },
       'Note updated',
     );
 
