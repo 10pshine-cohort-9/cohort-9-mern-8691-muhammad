@@ -15,9 +15,10 @@ model User {
   passwordHash String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  // This refresh token array helps in mutidevice logins
   refreshTokens RefreshToken[]
   notes Note[]
+  noteVersions NoteVersion[]
+  collaborations NoteCollaborator[]
 }
 
 model RefreshToken {
@@ -38,12 +39,46 @@ model Note {
   ownerId String
   owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   tags Tag[]
+  versions NoteVersion[]
+  collaborators NoteCollaborator[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model NoteVersion {
+  id String @id @default(uuid())
+  noteId String
+  note Note @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  title String
+  content Json @default("{\"type\":\"doc\",\"content\":[]}")
+  tags String[] @default([])
+  editedById String
+  editedBy User @relation(fields: [editedById], references: [id], onDelete: Cascade)
+  editedByName String
+  createdAt DateTime @default(now())
 }
 
 model Tag {
   id String @id @default(uuid())
   name String @unique
   notes Note[]
+}
+
+enum CollaboratorPermission {
+  READ
+  WRITE
+}
+
+model NoteCollaborator {
+  id String @id @default(uuid())
+  noteId String
+  note Note @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  permission CollaboratorPermission @default(READ)
+  isPinned Boolean @default(false)
+  isFavorite Boolean @default(false)
+  invitedAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([noteId, userId])
 }
