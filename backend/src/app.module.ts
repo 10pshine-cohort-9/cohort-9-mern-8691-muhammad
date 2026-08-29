@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { LoggerModule } from 'nestjs-pino';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
 import { ZodSerializerInterceptor, ZodValidationPipe } from 'nestjs-zod';
 import { PrismaExceptionFilter } from './common/filters/prisma-exception.filter.js';
@@ -14,6 +15,7 @@ import { TokenModule } from './token/token.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { NotesModule } from './notes/notes.module.js';
 import { NotificationsModule } from './notifications/notifications.module.js';
+import { RealtimeModule } from './realtime/realtime.module.js';
 
 @Module({
   imports: [
@@ -26,12 +28,14 @@ import { NotificationsModule } from './notifications/notifications.module.js';
         limit: 60,
       },
     ]),
+    EventEmitterModule.forRoot(),
     PrismaModule,
     HealthModule,
     TokenModule,
     AuthModule,
     NotesModule,
     NotificationsModule,
+    RealtimeModule,
   ],
   providers: [
     {

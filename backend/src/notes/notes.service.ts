@@ -5,6 +5,7 @@ import {
   UnprocessableEntityException,
   BadRequestException,
 } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
 import { Editor, type AnyExtension } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
@@ -50,6 +51,7 @@ export class NotesService {
 
   constructor(
     private readonly prisma: PrismaService,
+    private readonly events: EventEmitter2,
     @InjectPinoLogger(NotesService.name) private readonly logger: PinoLogger,
   ) {}
 
@@ -609,9 +611,32 @@ export class NotesService {
         : note.tags.map((t) => t.name);
 
     this.logger.info(
-      { userId, noteId, role, updated, tags, versioned: isMeaningfulEdit },
+      { userId, noteId, role, versioned: isMeaningfulEdit },
       'Note updated',
     );
+
+    const broadcastNote = { ...updated, tags };
+    this.events.emit('note.updated', {
+      note: broadcastNote,
+      editedByUserId: userId,
+    });
+
+    if (isMeaningfulEdit) {
+      const recipientUserIds = [
+        note.ownerId,
+        ...note.collaborators.map((c) => c.userId),
+      ].filter((id) => id !== userId);
+
+      if (recipientUserIds.length > 0) {
+        this.events.emit('note.edited-by-collaborator', {
+          noteId,
+          noteTitle: updated.title,
+          ownerId: note.ownerId,
+          editorUserId: userId,
+          recipientUserIds,
+        });
+      }
+    }
 
     return this.findOne(userId, noteId);
   }
@@ -622,6 +647,7 @@ export class NotesService {
 
     await this.prisma.note.delete({ where: { id: noteId } });
     this.logger.info({ userId: ownerId, noteId }, 'Note deleted');
+    this.events.emit('note.deleted', { noteId, deletedByUserId: ownerId });
   }
 
   private async getCompleteNote(noteId: string): Promise<CompleteNote | null> {
@@ -811,7 +837,13 @@ export class NotesService {
       'Note restored from version and newer history pruned',
     );
 
-    return { ...updated, tags: version.tags, viewerRole: role } as NoteResponse;
+    const broadcastNote = { ...updated, tags: version.tags };
+    this.events.emit('note.updated', {
+      note: broadcastNote,
+      editedByUserId: userId,
+    });
+
+    return { ...broadcastNote, viewerRole: role } as NoteResponse;
   }
 
   async exportNotes(
@@ -904,6 +936,12 @@ export class NotesService {
       }
 
       await this.prisma.note.deleteMany({ where: { id: { in: ids } } });
+      ids.forEach((id) =>
+        this.events.emit('note.deleted', {
+          noteId: id,
+          deletedByUserId: userId,
+        }),
+      );
       this.logger.info(
         { userId, action: input.action, affected: ids.length },
         'Bulk action applied',
@@ -945,6 +983,16 @@ export class NotesService {
         data,
       });
       affected += ownedIds.length;
+      const updatedNotes = await this.prisma.note.findMany({
+        where: { id: { in: ownedIds } },
+        include: { tags: true },
+      });
+      updatedNotes.forEach((n) =>
+        this.events.emit('note.updated', {
+          note: this.withTagNames(n),
+          editedByUserId: userId,
+        }),
+      );
     }
 
     if (collabIds.length > 0) {
