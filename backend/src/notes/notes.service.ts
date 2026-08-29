@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
   UnprocessableEntityException,
+  BadRequestException,
 } from '@nestjs/common';
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
 import { Editor, type AnyExtension } from '@tiptap/core';
@@ -14,8 +15,13 @@ import type { Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { TiptapDocSchema } from './notes.schemas.js';
 import type {
+  BulkActionInput,
+  BulkActionResponse,
   CollaboratorResponse,
   CreateNoteInput,
+  ExportNotesInput,
+  ExportResult,
+  ImportResult,
   InviteCollaboratorInput,
   NoteResponse,
   NoteVersionResponse,
@@ -23,6 +29,7 @@ import type {
   QueryNotesInput,
   UpdateCollaboratorInput,
   UpdateNoteInput,
+  UploadedFileLike,
   ViewerRole,
 } from './notes.types.js';
 
@@ -805,5 +812,281 @@ export class NotesService {
     );
 
     return { ...updated, tags: version.tags, viewerRole: role } as NoteResponse;
+  }
+
+  async exportNotes(
+    userId: string,
+    input: ExportNotesInput,
+  ): Promise<ExportResult> {
+    const notes = await this.prisma.note.findMany({
+      where: {
+        ownerId: userId,
+        ...(input.noteIds ? { id: { in: input.noteIds } } : {}),
+      },
+      include: { tags: true },
+      orderBy: { updatedAt: 'desc' },
+    });
+
+    if (notes.length === 0) {
+      throw new NotFoundException('No matching notes found to export');
+    }
+
+    const shaped = notes.map((n) => ({
+      title: n.title,
+      content: n.content,
+      tags: n.tags.map((t) => t.name),
+    }));
+
+    this.logger.info(
+      { userId, count: shaped.length, format: input.format },
+      'Notes exported',
+    );
+
+    return input.format === 'json'
+      ? this.toJsonExport(shaped)
+      : this.toMarkdownExport(notes);
+  }
+
+  async importNotes(
+    userId: string,
+    files: UploadedFileLike[],
+  ): Promise<ImportResult> {
+    let created = 0;
+    const failed: ImportResult['failed'] = [];
+
+    for (const file of files) {
+      try {
+        const text = file.buffer.toString('utf-8');
+        if (file.originalname.toLowerCase().endsWith('.json')) {
+          const count = await this.importJsonFile(userId, text);
+          created += count;
+        } else {
+          const count = await this.importMarkdownFile(
+            userId,
+            file.originalname,
+            text,
+          );
+          created += count;
+        }
+      } catch (err) {
+        failed.push({
+          filename: file.originalname,
+          error:
+            err instanceof Error ? err.message : 'Could not read this file',
+        });
+      }
+    }
+
+    this.logger.info(
+      { userId, created, failedCount: failed.length },
+      'Notes imported',
+    );
+    return { created, failed };
+  }
+
+  async bulkAction(
+    userId: string,
+    input: BulkActionInput,
+  ): Promise<BulkActionResponse> {
+    if (input.action === 'delete') {
+      const owned = await this.prisma.note.findMany({
+        where: { id: { in: input.noteIds }, ownerId: userId },
+        select: { id: true },
+      });
+      const ids = owned.map((n) => n.id);
+
+      if (ids.length === 0) {
+        this.logger.info(
+          { userId, action: input.action, affected: 0 },
+          'Bulk action matched no owned notes',
+        );
+        return { affected: 0 };
+      }
+
+      await this.prisma.note.deleteMany({ where: { id: { in: ids } } });
+      this.logger.info(
+        { userId, action: input.action, affected: ids.length },
+        'Bulk action applied',
+      );
+      return { affected: ids.length };
+    }
+
+    const owned =
+      (await this.prisma.note.findMany({
+        where: { id: { in: input.noteIds }, ownerId: userId },
+        select: { id: true },
+      })) ?? [];
+    const ownedIds = owned.map((n) => n.id);
+
+    const collabs =
+      (await this.prisma.noteCollaborator.findMany({
+        where: { noteId: { in: input.noteIds }, userId },
+        select: { noteId: true },
+      })) ?? [];
+    const collabIds = collabs.map((c) => c.noteId);
+
+    if (ownedIds.length === 0 && collabIds.length === 0) {
+      this.logger.info(
+        { userId, action: input.action, affected: 0 },
+        'Bulk action matched no notes',
+      );
+      return { affected: 0 };
+    }
+
+    const data =
+      input.action === 'pin' || input.action === 'unpin'
+        ? { isPinned: input.action === 'pin' }
+        : { isFavorite: input.action === 'favorite' };
+
+    let affected = 0;
+    if (ownedIds.length > 0) {
+      await this.prisma.note.updateMany({
+        where: { id: { in: ownedIds } },
+        data,
+      });
+      affected += ownedIds.length;
+    }
+
+    if (collabIds.length > 0) {
+      await this.prisma.noteCollaborator.updateMany({
+        where: { noteId: { in: collabIds }, userId },
+        data,
+      });
+      affected += collabIds.length;
+    }
+
+    this.logger.info(
+      { userId, action: input.action, affected },
+      'Bulk action applied',
+    );
+    return { affected };
+  }
+
+  private toJsonExport(notes: unknown[]): ExportResult {
+    return {
+      filename: `notes-export-${Date.now()}.json`,
+      contentType: 'application/json',
+      content: JSON.stringify(notes, null, 2),
+    };
+  }
+
+  private toMarkdownExport(
+    notes: {
+      title: string;
+      content: unknown;
+      tags: (string | { name: string })[];
+      updatedAt: Date;
+    }[],
+  ): ExportResult {
+    const sections = notes.map((n) => {
+      const tagNames = (n.tags || []).map((t) =>
+        typeof t === 'string' ? t : (t as { name: string }).name,
+      );
+      const markdownBody = this.tiptapJsonToMarkdown(n.content);
+      const header = `# ${n.title}`;
+      const tagLine =
+        tagNames.length > 0 ? `\n\nTags: ${tagNames.join(', ')}` : '';
+      return `${header}${tagLine}\n\n${markdownBody}`.trim();
+    });
+
+    return {
+      filename: `notes-export-${Date.now()}.md`,
+      contentType: 'text/markdown',
+      content: sections.join('\n\n---\n\n'),
+    };
+  }
+
+  private async importJsonFile(userId: string, text: string): Promise<number> {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      throw new BadRequestException('Invalid JSON file format');
+    }
+
+    const items: unknown[] = Array.isArray(parsed)
+      ? parsed
+      : parsed &&
+          typeof parsed === 'object' &&
+          Array.isArray((parsed as Record<string, unknown>).notes)
+        ? ((parsed as Record<string, unknown>).notes as unknown[])
+        : [parsed];
+
+    let created = 0;
+    for (const item of items) {
+      if (!item || typeof item !== 'object') continue;
+      const raw = item as Record<string, unknown>;
+
+      const title =
+        typeof raw.title === 'string' && raw.title.trim()
+          ? raw.title.trim()
+          : 'Imported Note';
+
+      const content = this.ensureTiptapJson(raw.content ?? raw);
+      const tags = Array.isArray(raw.tags)
+        ? raw.tags.map(String).filter(Boolean)
+        : undefined;
+
+      await this.create(userId, {
+        title: title.slice(0, 200),
+        content: content as CreateNoteInput['content'],
+        tags,
+      });
+      created += 1;
+    }
+
+    return created;
+  }
+
+  private async importMarkdownFile(
+    userId: string,
+    filename: string,
+    content: string,
+  ): Promise<number> {
+    const lines = content.split('\n');
+    let title = '';
+    let tags: string[] | undefined;
+    let bodyStartIndex = 0;
+
+    for (let i = 0; i < lines.length; i++) {
+      const trimmed = lines[i].trim();
+      if (!trimmed) continue;
+      const headingMatch = trimmed.match(/^#\s+(.+)/);
+      if (headingMatch) {
+        title = headingMatch[1].trim();
+        bodyStartIndex = i + 1;
+        break;
+      }
+      break;
+    }
+
+    for (let i = bodyStartIndex; i < lines.length; i++) {
+      const trimmed = lines[i].trim();
+      if (!trimmed) continue;
+      const tagsMatch = new RegExp(/^Tags:\s*(.+)/i).exec(trimmed);
+      if (tagsMatch) {
+        tags = tagsMatch[1]
+          .split(',')
+          .map((t) => t.trim())
+          .filter(Boolean);
+        bodyStartIndex = i + 1;
+      }
+      break;
+    }
+
+    if (!title) {
+      title = filename.replace(/\.[^/.]+$/, '').trim() || 'Imported Note';
+    }
+
+    const body = lines.slice(bodyStartIndex).join('\n').trim();
+    const contentJson = this.markdownToTiptapJson(body);
+
+    await this.create(userId, {
+      title: title.slice(0, 200),
+      content: contentJson as CreateNoteInput['content'],
+      tags,
+    });
+
+    return 1;
   }
 }
