@@ -14,6 +14,7 @@ import { HealthModule } from './health/health.module.js';
 import { TokenModule } from './token/token.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { NotesModule } from './notes/notes.module.js';
+import { TemplatesModule } from './templates/templates.module.js';
 import { NotificationsModule } from './notifications/notifications.module.js';
 import { RealtimeModule } from './realtime/realtime.module.js';
 
@@ -35,6 +36,7 @@ import { RealtimeModule } from './realtime/realtime.module.js';
     AuthModule,
     NotesModule,
     NotificationsModule,
+    TemplatesModule,
     RealtimeModule,
   ],
   providers: [
