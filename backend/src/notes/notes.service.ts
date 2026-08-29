@@ -18,6 +18,7 @@ import type {
   CreateNoteInput,
   InviteCollaboratorInput,
   NoteResponse,
+  NoteVersionResponse,
   PaginatedResult,
   QueryNotesInput,
   UpdateCollaboratorInput,
@@ -601,7 +602,7 @@ export class NotesService {
         : note.tags.map((t) => t.name);
 
     this.logger.info(
-      { userId, noteId, role, tags, updated, versioned: isMeaningfulEdit },
+      { userId, noteId, role, updated, tags, versioned: isMeaningfulEdit },
       'Note updated',
     );
 
@@ -716,5 +717,93 @@ export class NotesService {
         )
       : [];
     return { ...rest, tags: tagList };
+  }
+
+  async listVersions(
+    userId: string,
+    noteId: string,
+  ): Promise<NoteVersionResponse[]> {
+    const note = await this.getNoteWithCollaborators(noteId);
+    const role = this.resolveViewerRole(note, userId);
+    if (!role) {
+      throw new NotFoundException('Note not found');
+    }
+
+    const versions = await this.prisma.noteVersion.findMany({
+      where: { noteId },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    this.logger.info(
+      { userId, noteId, count: versions.length },
+      'Note version history fetched',
+    );
+    return versions as NoteVersionResponse[];
+  }
+
+  async getVersion(
+    userId: string,
+    noteId: string,
+    versionId: string,
+  ): Promise<NoteVersionResponse> {
+    const note = await this.getNoteWithCollaborators(noteId);
+    const role = this.resolveViewerRole(note, userId);
+    if (!role) {
+      throw new NotFoundException('Note not found');
+    }
+
+    const version = await this.prisma.noteVersion.findUnique({
+      where: { id: versionId },
+    });
+    if (version?.noteId !== noteId) {
+      throw new NotFoundException('Version not found');
+    }
+    return version as NoteVersionResponse;
+  }
+
+  async restoreVersion(
+    userId: string,
+    noteId: string,
+    versionId: string,
+  ): Promise<NoteResponse> {
+    const note = await this.getNoteWithCollaborators(noteId);
+    const role = this.resolveViewerRole(note, userId);
+    if (!role || role === 'read') {
+      this.logger.warn(
+        { userId, noteId, versionId },
+        'Version restore denied: read-only or no access',
+      );
+      throw new NotFoundException('Note not found');
+    }
+
+    const version = await this.prisma.noteVersion.findUnique({
+      where: { id: versionId },
+    });
+    if (version?.noteId !== noteId) {
+      throw new NotFoundException('Version not found');
+    }
+
+    const updated = await this.prisma.note.update({
+      where: { id: noteId },
+      data: {
+        title: version.title,
+        content: (version.content ?? undefined) as Prisma.InputJsonValue,
+      },
+    });
+    await this.syncTags(noteId, version.tags);
+
+    await this.prisma.noteVersion.deleteMany({
+      where: {
+        noteId,
+        createdAt: { gte: version.createdAt },
+      },
+    });
+
+    this.logger.info(
+      { userId, noteId, versionId },
+      'Note restored from version and newer history pruned',
+    );
+
+    return { ...updated, tags: version.tags, viewerRole: role } as NoteResponse;
   }
 }
