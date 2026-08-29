@@ -1,18 +1,19 @@
 import { Module } from '@nestjs/common';
-import { AuthModule } from './auth/auth.module.js';
-import { HealthModule } from './health/health.module.js';
-import { PrismaModule } from './prisma/prisma.module.js';
 import { ConfigModule } from '@nestjs/config';
-import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { LoggerModule } from 'nestjs-pino';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
 import { ZodSerializerInterceptor, ZodValidationPipe } from 'nestjs-zod';
-import { GlobalExceptionFilter } from './common/filters/global-exception.filter.js';
-import { LoggerModule } from 'nestjs-pino';
-import { pinoConfig } from './common/config/logger.config.js';
-import { TokenModule } from './token/token.module.js';
-import { TransformInterceptor } from './common/interceptors/transform.interceptor.js';
 import { PrismaExceptionFilter } from './common/filters/prisma-exception.filter.js';
+import { pinoConfig } from './common/config/logger.config.js';
+import { GlobalExceptionFilter } from './common/filters/global-exception.filter.js';
+import { TransformInterceptor } from './common/interceptors/transform.interceptor.js';
+import { PrismaModule } from './prisma/prisma.module.js';
+import { HealthModule } from './health/health.module.js';
+import { TokenModule } from './token/token.module.js';
+import { AuthModule } from './auth/auth.module.js';
 import { NotesModule } from './notes/notes.module.js';
+import { NotificationsModule } from './notifications/notifications.module.js';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { NotesModule } from './notes/notes.module.js';
     TokenModule,
     AuthModule,
     NotesModule,
+    NotificationsModule,
   ],
   providers: [
     {
