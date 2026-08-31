@@ -19,6 +19,7 @@ import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { getUserInitials, getNoteExcerpt } from "@/lib/utils";
 import {
   useNotesQuery,
+  useAllNotesQuery,
   useTogglePinMutation,
   useToggleFavoriteMutation,
   useDeleteNoteMutation,
@@ -127,7 +128,7 @@ function DashboardContent() {
 
   const debouncedSearch = useDebouncedValue(search, 300);
 
-  const statsQuery = useNotesQuery({ page: 1, limit: 100 });
+  const statsQuery = useAllNotesQuery();
   const allNotesForStats = useMemo(
     () => statsQuery.data?.data ?? [],
     [statsQuery.data?.data],

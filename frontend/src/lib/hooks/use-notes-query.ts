@@ -13,6 +13,7 @@ export const notesQueryKeys = {
   all: ["notes"] as const,
   lists: () => [...notesQueryKeys.all, "list"] as const,
   list: (query: NotesQueryInput) => [...notesQueryKeys.lists(), query] as const,
+  allPages: () => [...notesQueryKeys.lists(), "all-pages"] as const,
   details: () => [...notesQueryKeys.all, "detail"] as const,
   detail: (id: string) => [...notesQueryKeys.details(), id] as const,
 };
@@ -23,6 +24,37 @@ export function useNotesQuery(query: NotesQueryInput) {
     queryFn: () => notesApi.list(query),
     staleTime: 1000 * 30,
     placeholderData: (previousData) => previousData,
+  });
+}
+
+export function useAllNotesQuery() {
+  return useQuery<PaginatedNotes>({
+    queryKey: notesQueryKeys.allPages(),
+    queryFn: async () => {
+      const firstPage = await notesApi.list({ page: 1, limit: 50 });
+      if (firstPage.meta.totalPages <= 1) {
+        return firstPage;
+      }
+      const remainingPages = await Promise.all(
+        Array.from({ length: firstPage.meta.totalPages - 1 }, (_, i) =>
+          notesApi.list({ page: i + 2, limit: 50 }),
+        ),
+      );
+      const allData = [
+        ...firstPage.data,
+        ...remainingPages.flatMap((p) => p.data),
+      ];
+      return {
+        data: allData,
+        meta: {
+          ...firstPage.meta,
+          total: firstPage.meta.total,
+          totalPages: 1,
+          limit: allData.length,
+        },
+      };
+    },
+    staleTime: 1000 * 30,
   });
 }
 
