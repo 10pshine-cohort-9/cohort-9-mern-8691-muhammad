@@ -55,250 +55,6 @@ export class NotesService {
     @InjectPinoLogger(NotesService.name) private readonly logger: PinoLogger,
   ) {}
 
-  private async getNoteWithCollaborators(
-    noteId: string,
-  ): Promise<NoteWithCollaborators | null> {
-    return this.prisma.note.findUnique({
-      where: { id: noteId },
-      include: {
-        collaborators: true,
-        tags: true,
-        owner: { select: { username: true, name: true } },
-      },
-    });
-  }
-
-  private resolveViewerRole(
-    note: NoteWithCollaborators | null,
-    userId: string,
-  ): ViewerRole | null {
-    if (!note) return null;
-    if (note.ownerId === userId) return 'owner';
-
-    const collaborator = note.collaborators.find((c) => c.userId === userId);
-    if (collaborator) {
-      return collaborator.permission === 'WRITE' ? 'write' : 'read';
-    }
-
-    return null;
-  }
-
-  private assertOwner(
-    note: { ownerId: string } | null,
-    userId: string,
-    noteId: string,
-  ): asserts note is NonNullable<typeof note> {
-    if (!note) {
-      this.logger.warn({ userId, noteId }, 'Note not found');
-      throw new NotFoundException('Note not found');
-    }
-    if (note.ownerId !== userId) {
-      this.logger.warn({ userId, noteId }, 'Note action denied: not the owner');
-      throw new NotFoundException('Note not found');
-    }
-  }
-
-  private normalizeTagNames(tags: string[]): string[] {
-    return Array.from(
-      new Set(tags.map((t) => t.trim().toLowerCase()).filter(Boolean)),
-    );
-  }
-
-  private async syncTags(noteId: string, tags: string[]): Promise<void> {
-    const normalized = this.normalizeTagNames(tags);
-    await Promise.all(
-      normalized.map((name) =>
-        this.prisma.tag.upsert({
-          where: { name },
-          update: {},
-          create: { name },
-        }),
-      ),
-    );
-    await this.prisma.note.update({
-      where: { id: noteId },
-      data: {
-        tags: {
-          set: [],
-          connectOrCreate: normalized.map((name) => ({
-            where: { name },
-            create: { name },
-          })),
-        },
-      },
-    });
-  }
-
-  private withTagNames(note: Record<string, unknown>): Record<string, unknown> {
-    const { tags, ...rest } = note;
-    const tagList = Array.isArray(tags)
-      ? tags.map((t: unknown) =>
-          typeof t === 'string'
-            ? t
-            : ((t as { name?: string })?.name ?? String(t)),
-        )
-      : [];
-    return { ...rest, tags: tagList };
-  }
-
-  private markdownToTiptapJson(markdown: string): Prisma.InputJsonValue {
-    if (!markdown?.trim()) {
-      return { type: 'doc', content: [] };
-    }
-    try {
-      // Here we are making BARE mantine editor just for markdown conversion
-      const editor = new Editor({
-        extensions: [
-          StarterKit as unknown as AnyExtension,
-          Markdown as unknown as AnyExtension,
-        ],
-        content: markdown,
-        contentType: 'markdown',
-      });
-      const json = editor.getJSON();
-      editor.destroy();
-      return json as Prisma.InputJsonValue;
-    } catch {
-      return {
-        type: 'doc',
-        content: [
-          {
-            type: 'paragraph',
-            content: [{ type: 'text', text: markdown }],
-          },
-        ],
-      };
-    }
-  }
-
-  private tiptapJsonToMarkdown(json: unknown): string {
-    if (!json) return '';
-    if (typeof json === 'string') {
-      return json;
-    }
-    if (typeof json === 'object') {
-      try {
-        const editor = new Editor({
-          extensions: [
-            StarterKit as unknown as AnyExtension,
-            Markdown as unknown as AnyExtension,
-          ],
-          content: json as Record<string, unknown>,
-        });
-        const md = editor.getMarkdown();
-        editor.destroy();
-        return md;
-      } catch {
-        return '';
-      }
-    }
-    return '';
-  }
-
-  private ensureTiptapJson(content: unknown): Prisma.InputJsonValue {
-    if (!content) {
-      return { type: 'doc', content: [] };
-    }
-    if (typeof content === 'object' && content !== null) {
-      if ('type' in content) return content as Prisma.InputJsonValue;
-      return { type: 'doc', content: [] };
-    }
-    // If the TipTap json is in Stringified form then we do json parsing here to get TipTap Json
-    if (typeof content === 'string') {
-      const trimmed = content.trim();
-      if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
-        try {
-          const parsed = JSON.parse(trimmed);
-          if (parsed && typeof parsed === 'object' && 'type' in parsed) {
-            return parsed as Prisma.InputJsonValue;
-          }
-        } catch {
-          // If eventually the content is not in json then we have markdown in our hand so we will go for markdown parsing instead of throwing an error
-        }
-      }
-      return this.markdownToTiptapJson(trimmed);
-    }
-    return { type: 'doc', content: [] };
-  }
-
-  private async snapshotVersion(
-    note: NoteWithCollaborators,
-    editedById: string,
-  ): Promise<void> {
-    const latestVersion = await this.prisma.noteVersion.findFirst({
-      where: { noteId: note.id },
-      orderBy: { createdAt: 'desc' },
-    });
-
-    if (
-      process.env.NODE_ENV !== 'test' &&
-      latestVersion?.editedById === editedById &&
-      Date.now() - new Date(latestVersion.createdAt).getTime() < 60_000
-    ) {
-      return;
-    }
-
-    const editor = await this.prisma.user.findUnique({
-      where: { id: editedById },
-    });
-    const editedByName = editor
-      ? editor.name || editor.username
-      : 'Unknown user';
-
-    await this.prisma.noteVersion.create({
-      data: {
-        noteId: note.id,
-        title: note.title,
-        content: (note.content ?? undefined) as Prisma.InputJsonValue,
-        tags: note.tags.map((t) => (typeof t === 'string' ? t : t.name)),
-        editedById,
-        editedByName,
-      },
-    });
-
-    const surplus = await this.prisma.noteVersion.findMany({
-      where: { noteId: note.id },
-      orderBy: { createdAt: 'desc' },
-      skip: NotesService.MAX_VERSIONS_PER_NOTE,
-      select: { id: true },
-    });
-    if (surplus.length > 0) {
-      await this.prisma.noteVersion.deleteMany({
-        where: { id: { in: surplus.map((v) => v.id) } },
-      });
-    }
-  }
-
-  // This provides the list of shared notes to be displayed in a separate section in frontend
-  private toSharedListItem(
-    note: {
-      collaborators: {
-        userId?: string;
-        permission: CollaboratorPermission;
-        isPinned?: boolean;
-        isFavorite?: boolean;
-      }[];
-      owner?: { username: string; name?: string | null };
-      [key: string]: unknown;
-    },
-    userId?: string,
-  ): Record<string, unknown> {
-    const { collaborators, owner, ...rest } = note;
-    const myCollab =
-      (userId ? collaborators?.find((c) => c.userId === userId) : undefined) ??
-      collaborators?.[0];
-    const permission = myCollab?.permission ?? 'READ';
-    const ownerName = owner ? owner.name || owner.username : undefined;
-    return {
-      ...this.withTagNames(rest),
-      isPinned: myCollab?.isPinned ?? false,
-      isFavorite: myCollab?.isFavorite ?? false,
-      viewerRole:
-        permission === 'WRITE' ? ('write' as const) : ('read' as const),
-      ownerName,
-    };
-  }
-
   async create(ownerId: string, input: CreateNoteInput): Promise<NoteResponse> {
     if (!input.title?.trim()) {
       throw new UnprocessableEntityException('Title is required');
@@ -650,106 +406,169 @@ export class NotesService {
     this.events.emit('note.deleted', { noteId, deletedByUserId: ownerId });
   }
 
-  private async getCompleteNote(noteId: string): Promise<CompleteNote | null> {
-    return this.prisma.note.findUnique({
-      where: { id: noteId },
-      include: { tags: true },
+  async inviteCollaborator(
+    ownerId: string,
+    noteId: string,
+    input: InviteCollaboratorInput,
+  ): Promise<CollaboratorResponse> {
+    const note = await this.prisma.note.findUnique({ where: { id: noteId } });
+    this.assertOwner(note, ownerId, noteId);
+
+    const identifier = input.identifier.replace(/^@/, '').trim();
+
+    const invitee = identifier.includes('@')
+      ? await this.prisma.user.findUnique({
+          where: { email: identifier.toLowerCase() },
+        })
+      : await this.prisma.user.findUnique({
+          where: { username: identifier },
+        });
+
+    if (!invitee) {
+      throw new NotFoundException(
+        'No user found with that email address or username',
+      );
+    }
+    if (invitee.id === ownerId) {
+      throw new ConflictException('You already own this note');
+    }
+
+    const existing = await this.prisma.noteCollaborator.findUnique({
+      where: { noteId_userId: { noteId, userId: invitee.id } },
     });
+    if (existing) {
+      throw new ConflictException(
+        'This user is already a collaborator on this note',
+      );
+    }
+
+    const collaborator = await this.prisma.noteCollaborator.create({
+      data: {
+        noteId,
+        userId: invitee.id,
+        permission: input.permission ?? CollaboratorPermission.READ,
+      },
+      include: { user: true },
+    });
+
+    this.logger.info(
+      {
+        userId: ownerId,
+        noteId,
+        invitedUserId: invitee.id,
+        permission: collaborator.permission,
+      },
+      'Collaborator invited',
+    );
+
+    this.events.emit('collaborator.invited', {
+      noteId,
+      noteTitle: note.title,
+      inviterId: ownerId,
+      inviteeId: invitee.id,
+      permission: collaborator.permission,
+    });
+
+    return this.toSafeCollaborator(collaborator) as CollaboratorResponse;
   }
 
-  private assertOwner(
-    note: { ownerId: string } | null,
+  async listCollaborators(
     userId: string,
     noteId: string,
-  ): asserts note is NonNullable<typeof note> {
-    if (!note) {
-      this.logger.warn({ userId, noteId }, 'Note not found');
+  ): Promise<CollaboratorResponse[]> {
+    const note = await this.getNoteWithCollaborators(noteId);
+    const role = this.resolveViewerRole(note, userId);
+    if (!role) {
       throw new NotFoundException('Note not found');
     }
-    if (note.ownerId !== userId) {
-      this.logger.warn({ userId, noteId }, 'Note action denied: not the owner');
-      throw new NotFoundException('Note not found');
-    }
-  }
 
-  private normalizeTagNames(tags: string[]): string[] {
-    return Array.from(
-      new Set(tags.map((t) => t.trim().toLowerCase()).filter(Boolean)),
-    );
-  }
-
-  private ensureTiptapJson(content: unknown): Prisma.InputJsonValue {
-    if (!content) {
-      return { type: 'doc', content: [] };
-    }
-    if (typeof content === 'object' && content !== null) {
-      const parsed = TiptapDocSchema.safeParse(content);
-      if (parsed.success) return parsed.data as Prisma.InputJsonValue;
-      return { type: 'doc', content: [] };
-    }
-    if (typeof content === 'string') {
-      const trimmed = content.trim();
-      if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
-        try {
-          const parsed = JSON.parse(trimmed);
-          const validated = TiptapDocSchema.safeParse(parsed);
-          if (validated.success) {
-            return validated.data as Prisma.InputJsonValue;
-          }
-        } catch {
-          // if the content is not a json then we are going for a fallback to normal text
-        }
-      }
-      return {
-        type: 'doc',
-        content: [
-          {
-            type: 'paragraph',
-            content: [{ type: 'text', text: trimmed }],
-          },
-        ],
-      };
-    }
-    return { type: 'doc', content: [] };
-  }
-
-  // This keeps synchronization between the main tags table and the respective tags of a note without any repetition
-  private async syncTags(noteId: string, tags: string[]): Promise<void> {
-    const normalized = this.normalizeTagNames(tags);
-    await Promise.all(
-      normalized.map((name) =>
-        this.prisma.tag.upsert({
-          where: { name },
-          update: {},
-          create: { name },
-        }),
-      ),
-    );
-    await this.prisma.note.update({
-      where: { id: noteId },
-      data: {
-        tags: {
-          set: [],
-          connectOrCreate: normalized.map((name) => ({
-            where: { name },
-            create: { name },
-          })),
-        },
-      },
+    const collaborators = await this.prisma.noteCollaborator.findMany({
+      where: { noteId },
+      include: { user: true },
+      orderBy: { invitedAt: 'asc' },
     });
+
+    return collaborators.map(
+      (c) => this.toSafeCollaborator(c) as CollaboratorResponse,
+    );
   }
 
-  // This converts the nested tag objects to frontend readable array
-  private withTagNames(note: Record<string, unknown>): Record<string, unknown> {
-    const { tags, ...rest } = note;
-    const tagList = Array.isArray(tags)
-      ? tags.map((t: unknown) =>
-          typeof t === 'string'
-            ? t
-            : ((t as { name?: string })?.name ?? String(t)),
-        )
-      : [];
-    return { ...rest, tags: tagList };
+  async updateCollaboratorPermission(
+    ownerId: string,
+    noteId: string,
+    collaboratorUserId: string,
+    input: UpdateCollaboratorInput,
+  ): Promise<CollaboratorResponse> {
+    const note = await this.prisma.note.findUnique({ where: { id: noteId } });
+    this.assertOwner(note, ownerId, noteId);
+
+    const existing = await this.prisma.noteCollaborator.findUnique({
+      where: { noteId_userId: { noteId, userId: collaboratorUserId } },
+    });
+    if (!existing) {
+      throw new NotFoundException(
+        'This user is not a collaborator on this note',
+      );
+    }
+
+    const updated = await this.prisma.noteCollaborator.update({
+      where: { noteId_userId: { noteId, userId: collaboratorUserId } },
+      data: { permission: input.permission },
+      include: { user: true },
+    });
+
+    this.logger.info(
+      {
+        userId: ownerId,
+        noteId,
+        collaboratorUserId,
+        permission: input.permission,
+      },
+      'Collaborator permission updated',
+    );
+
+    this.events.emit('collaborator.permission-changed', {
+      noteId,
+      noteTitle: note.title,
+      collaboratorUserId,
+      permission: input.permission,
+      changedByUserId: ownerId,
+    });
+
+    return this.toSafeCollaborator(updated) as CollaboratorResponse;
+  }
+
+  async removeCollaborator(
+    ownerId: string,
+    noteId: string,
+    collaboratorUserId: string,
+  ): Promise<void> {
+    const note = await this.prisma.note.findUnique({ where: { id: noteId } });
+    this.assertOwner(note, ownerId, noteId);
+
+    const existing = await this.prisma.noteCollaborator.findUnique({
+      where: { noteId_userId: { noteId, userId: collaboratorUserId } },
+    });
+    if (!existing) {
+      throw new NotFoundException(
+        'This user is not a collaborator on this note',
+      );
+    }
+
+    await this.prisma.noteCollaborator.delete({
+      where: { noteId_userId: { noteId, userId: collaboratorUserId } },
+    });
+    this.logger.info(
+      { userId: ownerId, noteId, collaboratorUserId },
+      'Collaborator removed',
+    );
+
+    this.events.emit('collaborator.removed', {
+      noteId,
+      noteTitle: note.title,
+      collaboratorUserId,
+      removedByUserId: ownerId,
+    });
   }
 
   async listVersions(
@@ -844,6 +663,55 @@ export class NotesService {
     });
 
     return { ...broadcastNote, viewerRole: role } as NoteResponse;
+  }
+
+  private async snapshotVersion(
+    note: NoteWithCollaborators,
+    editedById: string,
+  ): Promise<void> {
+    const latestVersion = await this.prisma.noteVersion.findFirst({
+      where: { noteId: note.id },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    // Debounce rapid bursts of snapshots within 60 seconds by the same editor (bypassed in test environment)
+    if (
+      process.env.NODE_ENV !== 'test' &&
+      latestVersion?.editedById === editedById &&
+      Date.now() - new Date(latestVersion.createdAt).getTime() < 60_000
+    ) {
+      return;
+    }
+
+    const editor = await this.prisma.user.findUnique({
+      where: { id: editedById },
+    });
+    const editedByName = editor
+      ? editor.name || editor.username
+      : 'Unknown user';
+
+    await this.prisma.noteVersion.create({
+      data: {
+        noteId: note.id,
+        title: note.title,
+        content: (note.content ?? undefined) as Prisma.InputJsonValue,
+        tags: note.tags.map((t) => (typeof t === 'string' ? t : t.name)),
+        editedById,
+        editedByName,
+      },
+    });
+
+    const surplus = await this.prisma.noteVersion.findMany({
+      where: { noteId: note.id },
+      orderBy: { createdAt: 'desc' },
+      skip: NotesService.MAX_VERSIONS_PER_NOTE,
+      select: { id: true },
+    });
+    if (surplus.length > 0) {
+      await this.prisma.noteVersion.deleteMany({
+        where: { id: { in: surplus.map((v) => v.id) } },
+      });
+    }
   }
 
   async exportNotes(
@@ -1008,6 +876,218 @@ export class NotesService {
       'Bulk action applied',
     );
     return { affected };
+  }
+
+  private async getNoteWithCollaborators(
+    noteId: string,
+  ): Promise<NoteWithCollaborators | null> {
+    return this.prisma.note.findUnique({
+      where: { id: noteId },
+      include: {
+        collaborators: true,
+        tags: true,
+        owner: { select: { username: true, name: true } },
+      },
+    });
+  }
+
+  private resolveViewerRole(
+    note: NoteWithCollaborators | null,
+    userId: string,
+  ): ViewerRole | null {
+    if (!note) return null;
+    if (note.ownerId === userId) return 'owner';
+
+    const collaborator = note.collaborators.find((c) => c.userId === userId);
+    if (collaborator) {
+      return collaborator.permission === 'WRITE' ? 'write' : 'read';
+    }
+
+    return null;
+  }
+
+  private assertOwner(
+    note: { ownerId: string } | null,
+    userId: string,
+    noteId: string,
+  ): asserts note is NonNullable<typeof note> {
+    if (!note) {
+      this.logger.warn({ userId, noteId }, 'Note not found');
+      throw new NotFoundException('Note not found');
+    }
+    if (note.ownerId !== userId) {
+      this.logger.warn({ userId, noteId }, 'Note action denied: not the owner');
+      throw new NotFoundException('Note not found');
+    }
+  }
+
+  private toSafeCollaborator(
+    collaborator: Prisma.NoteCollaboratorGetPayload<{
+      include: { user: true };
+    }>,
+  ): Record<string, unknown> {
+    return {
+      id: collaborator.id,
+      noteId: collaborator.noteId,
+      userId: collaborator.userId,
+      permission: collaborator.permission,
+      invitedAt: collaborator.invitedAt,
+      user: collaborator.user
+        ? this.prisma.sanitizeUser(collaborator.user)
+        : undefined,
+    };
+  }
+
+  private toSharedListItem(
+    note: {
+      collaborators: {
+        userId?: string;
+        permission: CollaboratorPermission;
+        isPinned?: boolean;
+        isFavorite?: boolean;
+      }[];
+      owner?: { username: string; name?: string | null };
+      [key: string]: unknown;
+    },
+    userId?: string,
+  ): Record<string, unknown> {
+    const { collaborators, owner, ...rest } = note;
+    const myCollab =
+      (userId ? collaborators?.find((c) => c.userId === userId) : undefined) ??
+      collaborators?.[0];
+    const permission = myCollab?.permission ?? 'READ';
+    const ownerName = owner ? owner.name || owner.username : undefined;
+    return {
+      ...this.withTagNames(rest),
+      isPinned: myCollab?.isPinned ?? false,
+      isFavorite: myCollab?.isFavorite ?? false,
+      viewerRole:
+        permission === 'WRITE' ? ('write' as const) : ('read' as const),
+      ownerName,
+    };
+  }
+
+  private normalizeTagNames(tags: string[]): string[] {
+    return Array.from(
+      new Set(tags.map((t) => t.trim().toLowerCase()).filter(Boolean)),
+    );
+  }
+
+  private async syncTags(noteId: string, tags: string[]): Promise<void> {
+    const normalized = this.normalizeTagNames(tags);
+    await Promise.all(
+      normalized.map((name) =>
+        this.prisma.tag.upsert({
+          where: { name },
+          update: {},
+          create: { name },
+        }),
+      ),
+    );
+    await this.prisma.note.update({
+      where: { id: noteId },
+      data: {
+        tags: {
+          set: [],
+          connectOrCreate: normalized.map((name) => ({
+            where: { name },
+            create: { name },
+          })),
+        },
+      },
+    });
+  }
+
+  private withTagNames(note: Record<string, unknown>): Record<string, unknown> {
+    const { tags, ...rest } = note;
+    const tagList = Array.isArray(tags)
+      ? tags.map((t: unknown) =>
+          typeof t === 'string'
+            ? t
+            : ((t as { name?: string })?.name ?? String(t)),
+        )
+      : [];
+    return { ...rest, tags: tagList };
+  }
+
+  private markdownToTiptapJson(markdown: string): Prisma.InputJsonValue {
+    if (!markdown?.trim()) {
+      return { type: 'doc', content: [] };
+    }
+    try {
+      const editor = new Editor({
+        extensions: [
+          StarterKit as unknown as AnyExtension,
+          Markdown as unknown as AnyExtension,
+        ],
+        content: markdown,
+        contentType: 'markdown',
+      });
+      const json = editor.getJSON();
+      editor.destroy();
+      return json as Prisma.InputJsonValue;
+    } catch {
+      return {
+        type: 'doc',
+        content: [
+          {
+            type: 'paragraph',
+            content: [{ type: 'text', text: markdown }],
+          },
+        ],
+      };
+    }
+  }
+
+  private tiptapJsonToMarkdown(json: unknown): string {
+    if (!json) return '';
+    if (typeof json === 'string') {
+      return json;
+    }
+    if (typeof json === 'object') {
+      try {
+        const editor = new Editor({
+          extensions: [
+            StarterKit as unknown as AnyExtension,
+            Markdown as unknown as AnyExtension,
+          ],
+          content: json as Record<string, unknown>,
+        });
+        const md = editor.getMarkdown();
+        editor.destroy();
+        return md;
+      } catch {
+        return '';
+      }
+    }
+    return '';
+  }
+
+  private ensureTiptapJson(content: unknown): Prisma.InputJsonValue {
+    if (!content) {
+      return { type: 'doc', content: [] };
+    }
+    if (typeof content === 'object' && content !== null) {
+      const parsed = TiptapDocSchema.safeParse(content);
+      if (parsed.success) return parsed.data as Prisma.InputJsonValue;
+      return { type: 'doc', content: [] };
+    }
+    if (typeof content === 'string') {
+      const trimmed = content.trim();
+      if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+        try {
+          const parsed = JSON.parse(trimmed);
+          const validated = TiptapDocSchema.safeParse(parsed);
+          if (validated.success) {
+            return validated.data as Prisma.InputJsonValue;
+          }
+        } catch {
+          // Non-JSON string, convert as markdown
+        }
+      }
+      return this.markdownToTiptapJson(trimmed);
+    }
+    return { type: 'doc', content: [] };
   }
 
   private toJsonExport(notes: unknown[]): ExportResult {

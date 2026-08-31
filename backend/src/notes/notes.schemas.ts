@@ -92,6 +92,21 @@ export const BulkActionSchema = z.object({
   }),
 });
 
+export const InviteCollaboratorSchema = z.object({
+  identifier: z
+    .string()
+    .min(1, 'Please provide a valid email address or username')
+    .transform((val) => val.replace(/^@/, '').trim()),
+  permission: z
+    .enum(CollaboratorPermission)
+    .optional()
+    .default(CollaboratorPermission.READ),
+});
+
+export const UpdateCollaboratorSchema = z.object({
+  permission: z.enum(CollaboratorPermission),
+});
+
 export const ExportNotesSchema = z.object({
   noteIds: z.array(z.string()).min(1).optional(),
   format: z.enum(EXPORT_FORMATS, {
@@ -134,21 +149,6 @@ export const NoteVersionSchema = z.object({
   editedById: z.string().optional(),
   editedByName: z.string().optional(),
   createdAt: z.union([z.string(), z.date()]),
-});
-
-export const InviteCollaboratorSchema = z.object({
-  identifier: z
-    .string()
-    .min(1, 'Please provide a valid email address or username')
-    .transform((val) => val.replace(/^@/, '').trim()),
-  permission: z
-    .enum(CollaboratorPermission)
-    .optional()
-    .default(CollaboratorPermission.READ),
-});
-
-export const UpdateCollaboratorSchema = z.object({
-  permission: z.enum(CollaboratorPermission),
 });
 
 export const CollaboratorSchema = z.object({
