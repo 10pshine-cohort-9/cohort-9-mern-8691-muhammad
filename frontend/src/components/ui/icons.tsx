@@ -5,6 +5,14 @@ import {
   SunIcon as AnimateSun,
   MoonIcon as AnimateMoon,
   LoaderCircleIcon as AnimateLoader,
+  SparklesIcon as AnimateSparkles,
+  CheckIcon as AnimateCheck,
+  EyeIcon as AnimateEye,
+  EyeClosedIcon as AnimateEyeClosed,
+  UserRoundIcon as AnimateUserCircle,
+  LogOutIcon as AnimateLogOut,
+  FileTextIcon as AnimateFileText,
+  ArrowLeftIcon as AnimateArrowLeft,
 } from "@animateicons/react/lucide";
 
 export interface IconProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -40,3 +48,11 @@ function wrapIcon(
 export const IconSun = wrapIcon(AnimateSun, "IconSun");
 export const IconMoon = wrapIcon(AnimateMoon, "IconMoon");
 export const IconLoader = wrapIcon(AnimateLoader, "IconLoader");
+export const IconSparkles = wrapIcon(AnimateSparkles, "IconSparkles");
+export const IconCheck = wrapIcon(AnimateCheck, "IconCheck");
+export const IconEye = wrapIcon(AnimateEye, "IconEye");
+export const IconEyeClosed = wrapIcon(AnimateEyeClosed, "IconEyeClosed");
+export const IconUserCircle = wrapIcon(AnimateUserCircle, "IconUserCircle");
+export const IconLogout = wrapIcon(AnimateLogOut, "IconLogout");
+export const IconNotes = wrapIcon(AnimateFileText, "IconNotes");
+export const IconArrowLeft = wrapIcon(AnimateArrowLeft, "IconArrowLeft");
