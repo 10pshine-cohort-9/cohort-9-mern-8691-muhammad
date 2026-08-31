@@ -22,6 +22,7 @@ export function useNotesQuery(query: NotesQueryInput) {
     queryKey: notesQueryKeys.list(query),
     queryFn: () => notesApi.list(query),
     staleTime: 1000 * 30,
+    placeholderData: (previousData) => previousData,
   });
 }
 

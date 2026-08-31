@@ -15,6 +15,7 @@ import {
   IconPencil,
   IconLoader,
 } from "@/components/ui/icons";
+import { toast } from "sonner";
 
 interface NoteCardProps {
   note: Note;
@@ -47,9 +48,11 @@ export function NoteCard({
     setDeleting(true);
     try {
       await onDelete(note);
+      setConfirmingDelete(false);
+    } catch {
+      toast.error("Failed to delete note");
     } finally {
       setDeleting(false);
-      setConfirmingDelete(false);
     }
   };
 

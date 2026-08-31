@@ -17,6 +17,7 @@ export function useKeyboardShortcut({
     if (!enabled) return;
 
     const handler = (e: KeyboardEvent) => {
+      if (e.repeat) return;
       const modifierPressed = ctrlOrCmd ? e.ctrlKey || e.metaKey : true;
       if (modifierPressed && e.key.toLowerCase() === key.toLowerCase()) {
         e.preventDefault();

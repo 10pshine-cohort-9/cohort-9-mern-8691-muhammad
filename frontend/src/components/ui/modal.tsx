@@ -56,6 +56,10 @@ export function Modal({
             onClick={onClose}
           />
           <motion.div
+            role="dialog"
+            aria-modal="true"
+            aria-label={title}
+            aria-labelledby={title ? "modal-title" : undefined}
             initial={{ opacity: 0, scale: 0.96, y: 12 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: 12 }}
@@ -68,7 +72,10 @@ export function Modal({
           >
             {!hideHeader && title && (
               <div className="flex shrink-0 items-center justify-between border-b border-border px-6 py-4 bg-muted/20">
-                <h2 className="text-base sm:text-lg font-bold text-foreground">
+                <h2
+                  id="modal-title"
+                  className="text-base sm:text-lg font-bold text-foreground"
+                >
                   {title}
                 </h2>
                 <button

@@ -14,16 +14,12 @@ const dateStringSchema = z
 
 export const TiptapDocSchema = z
   .object({
-    type: z.string().default('doc'),
+    type: z.literal('doc').default('doc'),
     content: z.array(z.record(z.string(), z.unknown())).optional().default([]),
   })
   .loose();
 
-export const TiptapContentSchema = z.union([
-  TiptapDocSchema,
-  z.record(z.string(), z.unknown()),
-  z.string(),
-]);
+export const TiptapContentSchema = TiptapDocSchema;
 
 export const CreateNoteSchema = z.object({
   title: z

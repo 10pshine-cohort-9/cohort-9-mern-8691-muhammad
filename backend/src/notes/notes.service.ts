@@ -6,6 +6,7 @@ import {
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
 import type { Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { TiptapDocSchema } from './notes.schemas.js';
 import type {
   CreateNoteInput,
   NoteResponse,
@@ -253,7 +254,8 @@ export class NotesService {
       return { type: 'doc', content: [] };
     }
     if (typeof content === 'object' && content !== null) {
-      if ('type' in content) return content as Prisma.InputJsonValue;
+      const parsed = TiptapDocSchema.safeParse(content);
+      if (parsed.success) return parsed.data as Prisma.InputJsonValue;
       return { type: 'doc', content: [] };
     }
     if (typeof content === 'string') {
@@ -261,8 +263,9 @@ export class NotesService {
       if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
         try {
           const parsed = JSON.parse(trimmed);
-          if (parsed && typeof parsed === 'object' && 'type' in parsed) {
-            return parsed as Prisma.InputJsonValue;
+          const validated = TiptapDocSchema.safeParse(parsed);
+          if (validated.success) {
+            return validated.data as Prisma.InputJsonValue;
           }
         } catch {
           // if the content is not a json then we are going for a fallback to normal text

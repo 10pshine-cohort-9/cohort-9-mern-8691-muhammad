@@ -25,6 +25,7 @@ import {
   IconTag,
   IconClose,
 } from "@/components/ui/icons";
+import { toast } from "sonner";
 
 interface NotePreviewModalProps {
   note: Note | null;
@@ -60,32 +61,14 @@ export function NotePreviewModal({
       Highlight,
       TextAlign.configure({ types: ["heading", "paragraph"] }),
     ],
-    content: note?.content ? note.content : { type: "doc", content: [] },
+    content: note?.content ?? { type: "doc", content: [] },
   });
 
   React.useEffect(() => {
     if (opened && note && previewEditor) {
-      if (note.content) {
-        if (typeof note.content === "object") {
-          // Here we are setting the content of tip tap with out note content
-          // to make use of inbuilt preview editor of mantine
-          previewEditor.commands.setContent(note.content);
-        } else if (typeof note.content === "string") {
-          const trimmed = note.content.trim();
-          if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
-            try {
-              const parsed = JSON.parse(trimmed);
-              previewEditor.commands.setContent(parsed);
-            } catch {
-              previewEditor.commands.setContent(trimmed);
-            }
-          } else {
-            previewEditor.commands.setContent(trimmed);
-          }
-        }
-      } else {
-        previewEditor.commands.setContent({ type: "doc", content: [] });
-      }
+      previewEditor.commands.setContent(
+        note.content ?? { type: "doc", content: [] },
+      );
     }
   }, [opened, note, previewEditor]);
 
@@ -99,10 +82,12 @@ export function NotePreviewModal({
     setDeleting(true);
     try {
       await onDelete(note);
+      setConfirmingDelete(false);
       onClose();
+    } catch {
+      toast.error("Failed to delete note");
     } finally {
       setDeleting(false);
-      setConfirmingDelete(false);
     }
   };
 

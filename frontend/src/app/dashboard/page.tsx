@@ -15,6 +15,7 @@ import { LineSidebar } from "@/components/ui/line-sidebar";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { useAuthStore, useNotesStore, type NotesNavTab } from "@/lib/store";
 import { useKeyboardShortcut } from "@/hooks/use-keyboard-shortcut";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { getUserInitials, getNoteExcerpt } from "@/lib/utils";
 import {
   useNotesQuery,
@@ -64,7 +65,6 @@ const sortOptions = [
   },
 ];
 
-// This is a tab navigated dashboard which provides dedicated view for just pinned and just favourite notes along with all respective filtering and searching
 function DashboardContent() {
   const user = useAuthStore((s) => s.user);
   const isInitialized = useAuthStore((s) => s.isInitialized);
@@ -80,7 +80,6 @@ function DashboardContent() {
 
   const queryClient = useQueryClient();
 
-  // Here we make use of useShallow capability of zustand for fast updates of ui avaoiding irrelevant rerenders of complete dashboard
   const {
     activeTab,
     setActiveTab,
@@ -126,21 +125,20 @@ function DashboardContent() {
   const [tagFilter, setTagFilter] = useState<string | undefined>(undefined);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  const notesQuery = useNotesQuery({ page: 1, limit: 50 });
+  const debouncedSearch = useDebouncedValue(search, 300);
 
-  const allNotes = useMemo(
-    () => notesQuery.data?.data ?? [],
-    [notesQuery.data?.data],
+  const statsQuery = useNotesQuery({ page: 1, limit: 100 });
+  const allNotesForStats = useMemo(
+    () => statsQuery.data?.data ?? [],
+    [statsQuery.data?.data],
   );
 
-  const isLoading = notesQuery.isLoading && !notesQuery.data;
-
   const stats = useMemo(() => {
-    const total = allNotes.length;
-    const pinned = allNotes.filter((n) => n.isPinned).length;
-    const favorites = allNotes.filter((n) => n.isFavorite).length;
+    const total = statsQuery.data?.meta.total ?? allNotesForStats.length;
+    const pinned = allNotesForStats.filter((n) => n.isPinned).length;
+    const favorites = allNotesForStats.filter((n) => n.isFavorite).length;
     const allTags = new Set<string>();
-    allNotes.forEach((n) => n.tags?.forEach((t) => allTags.add(t)));
+    allNotesForStats.forEach((n) => n.tags?.forEach((t) => allTags.add(t)));
 
     return {
       total,
@@ -148,7 +146,48 @@ function DashboardContent() {
       favorites,
       tags: allTags.size,
     };
-  }, [allNotes]);
+  }, [statsQuery.data?.meta.total, allNotesForStats]);
+
+  const notesQuery = useNotesQuery({
+    page,
+    limit: 12,
+    search: debouncedSearch.trim() || undefined,
+    sortBy,
+    order,
+    tags: tagFilter || undefined,
+    pinnedOnly: activeTab === "pinned",
+    favoritesOnly: activeTab === "favorites",
+    dateFrom: dateFrom || undefined,
+    dateTo: dateTo || undefined,
+  });
+
+  const serverNotes = useMemo(
+    () => notesQuery.data?.data ?? [],
+    [notesQuery.data?.data],
+  );
+
+  const displayNotes = useMemo(() => {
+    let list = serverNotes;
+
+    if (search.trim() && search.trim() !== debouncedSearch.trim()) {
+      const q = search.trim().toLowerCase();
+      list = list.filter((n) => {
+        const matchTitle = n.title?.toLowerCase().includes(q);
+        const matchContent = getNoteExcerpt(n.content, 5000)
+          .toLowerCase()
+          .includes(q);
+        const matchTags = n.tags?.some((t) => t.toLowerCase().includes(q));
+        return matchTitle || matchContent || matchTags;
+      });
+    }
+
+    return list;
+  }, [serverNotes, search, debouncedSearch]);
+
+  const totalItems = notesQuery.data?.meta.total ?? displayNotes.length;
+  const totalPages = notesQuery.data?.meta.totalPages ?? 1;
+  const currentPage = Math.min(page, Math.max(1, totalPages));
+  const isLoading = notesQuery.isLoading && !notesQuery.data;
 
   const navIndices: Record<NotesNavTab, number> = {
     all: 0,
@@ -183,72 +222,6 @@ function DashboardContent() {
     enabled: !isCreateOpen && !editingNote && !previewNote,
   });
 
-  const filteredNotes = useMemo(() => {
-    let list = [...allNotes];
-
-    if (activeTab === "pinned") {
-      list = list.filter((n) => n.isPinned);
-    } else if (activeTab === "favorites") {
-      list = list.filter((n) => n.isFavorite);
-    }
-
-    if (tagFilter) {
-      const tagQuery = tagFilter.toLowerCase().trim();
-      list = list.filter((n) =>
-        n.tags?.some((t) => t.toLowerCase().includes(tagQuery)),
-      );
-    }
-
-    if (dateFrom) {
-      const fromTime = new Date(dateFrom).getTime();
-      list = list.filter((n) => new Date(n.createdAt).getTime() >= fromTime);
-    }
-    if (dateTo) {
-      const toTime = new Date(dateTo).getTime() + 86400000;
-      list = list.filter((n) => new Date(n.createdAt).getTime() <= toTime);
-    }
-
-    const q = search.trim().toLowerCase();
-    if (q) {
-      list = list.filter((n) => {
-        const matchTitle = n.title?.toLowerCase().includes(q);
-        const matchContent = getNoteExcerpt(n.content, 5000)
-          .toLowerCase()
-          .includes(q);
-        const matchTags = n.tags?.some((t) => t.toLowerCase().includes(q));
-        return matchTitle || matchContent || matchTags;
-      });
-    }
-
-    list.sort((a, b) => {
-      if (sortBy === "title") {
-        return order === "asc"
-          ? a.title.localeCompare(b.title)
-          : b.title.localeCompare(a.title);
-      }
-      if (sortBy === "createdAt") {
-        const diff =
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-        return order === "asc" ? -diff : diff;
-      }
-      const diff =
-        new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
-      return order === "asc" ? -diff : diff;
-    });
-
-    return list;
-  }, [allNotes, activeTab, tagFilter, dateFrom, dateTo, search, sortBy, order]);
-
-  const pageSize = 12;
-  const totalItems = filteredNotes.length;
-  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
-  const currentPage = Math.min(page, totalPages);
-
-  const paginatedNotes = useMemo(() => {
-    const start = (currentPage - 1) * pageSize;
-    return filteredNotes.slice(start, start + pageSize);
-  }, [filteredNotes, currentPage, pageSize]);
-
   const openCreate = () => {
     setEditingNote(null);
     setIsCreateOpen(true);
@@ -266,6 +239,15 @@ function DashboardContent() {
     setIsCreateOpen(false);
     setEditingNote(null);
     queryClient.invalidateQueries({ queryKey: notesQueryKeys.lists() });
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      router.replace("/login");
+    } catch {
+      router.replace("/login");
+    }
   };
 
   const handleTogglePin = (note: Note) => {
@@ -295,6 +277,7 @@ function DashboardContent() {
   const handleFilterChange = (f: NoteFilters) => {
     setDateRange(f.dateFrom ?? "", f.dateTo ?? "");
     setTagFilter(f.tags);
+    setPage(1);
   };
 
   const activeSortKey = `${sortBy}-${order}`;
@@ -406,10 +389,7 @@ function DashboardContent() {
 
           <button
             type="button"
-            onClick={async () => {
-              await logout();
-              router.push("/login");
-            }}
+            onClick={handleLogout}
             aria-label="Log out"
             title="Log out"
             className="flex h-8 w-8 items-center justify-center rounded-xl border border-destructive/20 bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors cursor-pointer"
@@ -537,7 +517,7 @@ function DashboardContent() {
                 transition={{ duration: 0.12 }}
               >
                 <NoteList
-                  notes={paginatedNotes}
+                  notes={displayNotes}
                   isLoading={isLoading}
                   hasActiveSearch={search.trim().length > 0}
                   emptyMessage={

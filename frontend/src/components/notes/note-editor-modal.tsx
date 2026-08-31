@@ -44,7 +44,7 @@ export function NoteEditorModal({
   onSaved,
 }: Readonly<NoteEditorModalProps>) {
   const [title, setTitle] = useState("");
-  const [content, setContent] = useState<JSONContent | string>({
+  const [content, setContent] = useState<JSONContent>({
     type: "doc",
     content: [],
   });
@@ -67,7 +67,7 @@ export function NoteEditorModal({
       Highlight,
       TextAlign.configure({ types: ["heading", "paragraph"] }),
     ],
-    content: note?.content ? note.content : { type: "doc", content: [] },
+    content: note?.content ?? { type: "doc", content: [] },
     onUpdate: ({ editor }) => {
       setContent(editor.getJSON());
     },
@@ -97,21 +97,7 @@ export function NoteEditorModal({
     setError(null);
 
     if (note?.content) {
-      if (typeof note.content === "object") {
-        editor.commands.setContent(note.content);
-      } else if (typeof note.content === "string") {
-        const trimmed = note.content.trim();
-        if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
-          try {
-            const parsed = JSON.parse(trimmed);
-            editor.commands.setContent(parsed);
-          } catch {
-            editor.commands.setContent(trimmed);
-          }
-        } else {
-          editor.commands.setContent(trimmed);
-        }
-      }
+      editor.commands.setContent(note.content);
       setContent(editor.getJSON());
     } else {
       editor.commands.setContent({ type: "doc", content: [] });
@@ -125,24 +111,27 @@ export function NoteEditorModal({
       return;
     }
     const currentContent = editor ? editor.getJSON() : content;
+    const contentPayload = currentContent;
     setSaving(true);
     setError(null);
     try {
       const saved = currentNote
         ? await notesApi.update(currentNote.id, {
             title: title.trim(),
-            content: currentContent,
+            content: contentPayload,
             isPinned,
             isFavorite,
             tags,
           })
         : await notesApi.create({
             title: title.trim(),
-            content: currentContent,
+            content: contentPayload,
             isPinned,
             isFavorite,
             tags,
           });
+      setCurrentNote(saved);
+      initialLoadedRef.current = saved.id;
       toast.success(
         currentNote ? "Note saved successfully" : "Note created successfully",
       );

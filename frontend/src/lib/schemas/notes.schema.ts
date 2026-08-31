@@ -14,16 +14,12 @@ const dateStringSchema = z
 
 export const tiptapDocSchema = z
   .object({
-    type: z.string().default("doc"),
+    type: z.string().optional().default("doc"),
     content: z.array(z.record(z.string(), z.unknown())).optional().default([]),
   })
   .loose();
 
-export const tiptapContentSchema = z.union([
-  tiptapDocSchema,
-  z.record(z.string(), z.unknown()),
-  z.string(),
-]);
+export const tiptapContentSchema = tiptapDocSchema;
 
 export const createNoteSchema = z.object({
   title: z
@@ -108,8 +104,8 @@ export const NoteSchema = noteSchema;
 export const NoteListMetaSchema = noteListMetaSchema;
 export const NoteListResponseSchema = noteListResponseSchema;
 
-export type CreateNoteInput = z.infer<typeof createNoteSchema>;
-export type UpdateNoteInput = z.infer<typeof updateNoteSchema>;
+export type CreateNoteInput = z.input<typeof createNoteSchema>;
+export type UpdateNoteInput = z.input<typeof updateNoteSchema>;
 export type NotesQueryInput = z.input<typeof queryNotesSchema>;
 export type NotesQuery = z.infer<typeof queryNotesSchema>;
 export type NoteFilters = z.infer<typeof noteFiltersSchema>;
