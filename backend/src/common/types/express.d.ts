@@ -1,4 +1,5 @@
 import 'express';
+import 'multer';
 import type { SafeUser } from '../../auth/auth.types.js';
 
 declare global {
