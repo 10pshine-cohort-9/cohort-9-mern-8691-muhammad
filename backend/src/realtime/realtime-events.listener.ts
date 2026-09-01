@@ -63,79 +63,124 @@ export class RealtimeEventsListener {
 
   @OnEvent('note.updated')
   handleNoteUpdated({ note, editedByUserId }: NoteUpdatedEvent): void {
-    this.gateway.emitNoteUpdated(note, editedByUserId);
+    try {
+      this.gateway.emitNoteUpdated(note, editedByUserId);
+    } catch (err) {
+      this.logger.error(
+        { noteId: note.id, editedByUserId, err },
+        'Error in note.updated event handler',
+      );
+    }
   }
 
   @OnEvent('note.deleted')
   handleNoteDeleted({ noteId, deletedByUserId }: NoteDeletedEvent): void {
-    this.gateway.emitNoteDeleted(noteId, deletedByUserId);
+    try {
+      this.gateway.emitNoteDeleted(noteId, deletedByUserId);
+    } catch (err) {
+      this.logger.error(
+        { noteId, deletedByUserId, err },
+        'Error in note.deleted event handler',
+      );
+    }
   }
 
   @OnEvent('note.edited-by-collaborator')
   async handleNoteEditedByCollaborator(
     event: NoteEditedByCollaboratorEvent,
   ): Promise<void> {
-    const editorName = await this.displayName(event.editorUserId);
-    await Promise.all(
-      event.recipientUserIds.map((recipientId) =>
-        this.notifyAndPush(recipientId, NotificationType.NOTE_EDITED, {
-          noteId: event.noteId,
-          noteTitle: event.noteTitle,
-          editorName,
-        }),
-      ),
-    );
+    try {
+      const editorName = await this.displayName(event.editorUserId);
+      await Promise.all(
+        event.recipientUserIds.map((recipientId) =>
+          this.notifyAndPush(recipientId, NotificationType.NOTE_EDITED, {
+            noteId: event.noteId,
+            noteTitle: event.noteTitle,
+            editorName,
+          }),
+        ),
+      );
+    } catch (err) {
+      this.logger.error(
+        { event, err },
+        'Error in note.edited-by-collaborator event handler',
+      );
+    }
   }
 
   @OnEvent('collaborator.invited')
   async handleCollaboratorInvited(
     event: CollaboratorInvitedEvent,
   ): Promise<void> {
-    const inviterName = await this.displayName(event.inviterId);
-    await this.notifyAndPush(
-      event.inviteeId,
-      NotificationType.COLLABORATOR_INVITED,
-      {
-        noteId: event.noteId,
-        noteTitle: event.noteTitle,
-        inviterName,
-        permission: event.permission,
-      },
-    );
+    try {
+      const inviterName = await this.displayName(event.inviterId);
+      await this.notifyAndPush(
+        event.inviteeId,
+        NotificationType.COLLABORATOR_INVITED,
+        {
+          noteId: event.noteId,
+          noteTitle: event.noteTitle,
+          inviterName,
+          permission: event.permission,
+        },
+      );
+    } catch (err) {
+      this.logger.error(
+        { event, err },
+        'Error in collaborator.invited event handler',
+      );
+    }
   }
 
   @OnEvent('collaborator.permission-changed')
   async handlePermissionChanged(
     event: CollaboratorPermissionChangedEvent,
   ): Promise<void> {
-    const changedByName = await this.displayName(event.changedByUserId);
-    await this.notifyAndPush(
-      event.collaboratorUserId,
-      NotificationType.PERMISSION_CHANGED,
-      {
-        noteId: event.noteId,
-        noteTitle: event.noteTitle,
-        permission: event.permission,
-        changedByName,
-      },
-    );
+    try {
+      const changedByName = await this.displayName(event.changedByUserId);
+      await this.notifyAndPush(
+        event.collaboratorUserId,
+        NotificationType.PERMISSION_CHANGED,
+        {
+          noteId: event.noteId,
+          noteTitle: event.noteTitle,
+          permission: event.permission,
+          changedByName,
+        },
+      );
+    } catch (err) {
+      this.logger.error(
+        { event, err },
+        'Error in collaborator.permission-changed event handler',
+      );
+    }
   }
 
   @OnEvent('collaborator.removed')
   async handleCollaboratorRemoved(
     event: CollaboratorRemovedEvent,
   ): Promise<void> {
-    this.gateway.evictUserFromNoteRoom(event.collaboratorUserId, event.noteId);
-    const removedByName = await this.displayName(event.removedByUserId);
-    await this.notifyAndPush(
-      event.collaboratorUserId,
-      NotificationType.COLLABORATOR_REMOVED,
-      {
-        noteId: event.noteId,
-        noteTitle: event.noteTitle,
-        removedByName,
-      },
-    );
+    try {
+      this.gateway.evictUserFromNoteRoom(
+        event.collaboratorUserId,
+        event.noteId,
+      );
+      const removedByName = await this.displayName(event.removedByUserId);
+      await this.notifyAndPush(
+        event.collaboratorUserId,
+        NotificationType.COLLABORATOR_REMOVED,
+        {
+          noteId: event.noteId,
+          noteTitle: event.noteTitle,
+          removedByName,
+        },
+      );
+    } catch (err) {
+      this.logger.error(
+        { event, err },
+        'Error in collaborator.removed event handler',
+      );
+    }
   }
 
   private async notifyAndPush(
@@ -160,10 +205,18 @@ export class RealtimeEventsListener {
   }
 
   private async displayName(userId: string): Promise<string> {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: { name: true, username: true },
-    });
-    return user ? user.name || user.username : 'Someone';
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { name: true, username: true },
+      });
+      return user ? user.name || user.username : 'Someone';
+    } catch (err) {
+      this.logger.warn(
+        { userId, err },
+        'Failed to resolve user display name for realtime event, falling back to "Someone"',
+      );
+      return 'Someone';
+    }
   }
 }
