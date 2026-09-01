@@ -111,6 +111,22 @@ body {
     color 0.2s ease;
 }
 
+button,
+[role="button"],
+input[type="button"],
+input[type="submit"],
+input[type="reset"] {
+  cursor: pointer;
+}
+
+button:disabled,
+[role="button"][aria-disabled="true"],
+input[type="button"]:disabled,
+input[type="submit"]:disabled,
+input[type="reset"]:disabled {
+  cursor: not-allowed;
+}
+
 .neo-card {
   background-color: var(--card);
   color: var(--card-foreground);
@@ -173,4 +189,181 @@ body {
 
 .dark .brand-title-ories {
   color: #3143ca;
+}
+
+.mantine-RichTextEditor-root {
+  background-color: transparent !important;
+  border: none !important;
+  color: var(--foreground) !important;
+}
+
+.mantine-RichTextEditor-toolbar {
+  background-color: var(--muted) !important;
+  border: 1px solid var(--border) !important;
+  padding: 0.45rem 0.65rem !important;
+  gap: 0.35rem !important;
+  border-radius: 0.85rem !important;
+  margin-bottom: 1rem !important;
+}
+
+.dark .mantine-RichTextEditor-toolbar {
+  background-color: var(--secondary) !important;
+  border-color: var(--border) !important;
+}
+
+.mantine-RichTextEditor-controlsGroup {
+  border: 1px solid var(--border) !important;
+  border-radius: 0.6rem !important;
+  overflow: hidden !important;
+  background-color: var(--card) !important;
+}
+
+.mantine-RichTextEditor-control {
+  background-color: var(--card) !important;
+  color: var(--muted-foreground) !important;
+  border: none !important;
+  transition: all 0.15s ease !important;
+}
+
+.mantine-RichTextEditor-control:hover {
+  background-color: var(--muted) !important;
+  color: var(--foreground) !important;
+}
+
+.dark .mantine-RichTextEditor-control {
+  background-color: var(--card) !important;
+  color: var(--muted-foreground) !important;
+}
+
+.dark .mantine-RichTextEditor-control:hover {
+  background-color: var(--secondary) !important;
+  color: var(--foreground) !important;
+}
+
+.mantine-RichTextEditor-control[data-active="true"] {
+  background-color: var(--primary) !important;
+  color: var(--primary-foreground) !important;
+}
+
+.mantine-RichTextEditor-content {
+  background-color: transparent !important;
+  color: var(--foreground) !important;
+}
+
+.tiptap {
+  color: var(--foreground) !important;
+  outline: none !important;
+  min-height: 240px;
+  font-size: 0.95rem;
+  line-height: 1.7;
+}
+
+.tiptap p {
+  margin-bottom: 0.75rem;
+}
+
+.tiptap h1 {
+  font-size: 1.65rem;
+  font-weight: 800;
+  margin-top: 1.25rem;
+  margin-bottom: 0.5rem;
+  color: var(--foreground);
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.35rem;
+}
+
+.tiptap h2 {
+  font-size: 1.35rem;
+  font-weight: 700;
+  margin-top: 1rem;
+  margin-bottom: 0.4rem;
+  color: var(--foreground);
+}
+
+.tiptap h3 {
+  font-size: 1.15rem;
+  font-weight: 600;
+  margin-top: 0.85rem;
+  margin-bottom: 0.35rem;
+  color: var(--foreground);
+}
+
+.tiptap h4 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-top: 0.75rem;
+  margin-bottom: 0.25rem;
+  color: var(--foreground);
+}
+
+.tiptap ul {
+  list-style-type: disc;
+  padding-left: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.tiptap ol {
+  list-style-type: decimal;
+  padding-left: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.tiptap blockquote {
+  border-left: 3px solid var(--primary);
+  background-color: var(--muted);
+  padding: 0.5rem 0.85rem;
+  border-radius: 0 0.5rem 0.5rem 0;
+  margin: 0.85rem 0;
+  font-style: italic;
+}
+
+.tiptap code {
+  background-color: var(--muted);
+  color: var(--primary);
+  padding: 0.15rem 0.35rem;
+  border-radius: 0.25rem;
+  font-family: var(--font-mono);
+  font-size: 0.88em;
+  border: 1px solid var(--border);
+}
+
+.tiptap pre {
+  background-color: var(--muted);
+  border: 1px solid var(--border);
+  padding: 0.85rem;
+  border-radius: 0.5rem;
+  overflow-x: auto;
+  margin: 0.85rem 0;
+}
+
+.tiptap mark {
+  background-color: rgba(245, 158, 11, 0.35);
+  color: inherit;
+  padding: 0.1rem 0.25rem;
+  border-radius: 0.2rem;
+}
+
+.tiptap a {
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--muted-foreground);
+  border-radius: 9999px;
+  opacity: 0.3;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary);
 }

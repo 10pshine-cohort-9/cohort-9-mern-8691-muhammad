@@ -3,6 +3,9 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "next-themes";
 import { ReactQueryProvider } from "@/lib/query-client";
+import { MantineProvider, ColorSchemeScript } from "@mantine/core";
+import "@mantine/core/styles.css";
+import "@mantine/tiptap/styles.css";
 import { ThemeToaster } from "@/components/theme/theme-toaster";
 
 const geistSans = Geist({
@@ -29,6 +32,9 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <ColorSchemeScript defaultColorScheme="light" />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
@@ -38,10 +44,12 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <ReactQueryProvider>
-            {children}
-            <ThemeToaster />
-          </ReactQueryProvider>
+          <MantineProvider defaultColorScheme="light">
+            <ReactQueryProvider>
+              {children}
+              <ThemeToaster />
+            </ReactQueryProvider>
+          </MantineProvider>
         </ThemeProvider>
       </body>
     </html>

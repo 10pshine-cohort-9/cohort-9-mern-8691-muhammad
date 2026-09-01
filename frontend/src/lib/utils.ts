@@ -1,11 +1,12 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { generateText, type JSONContent } from "@tiptap/core";
+import StarterKit from "@tiptap/starter-kit";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-// A simple password strength scorer for strenght indication in sign up form
 export function passwordStrength(password: string): {
   score: 0 | 1 | 2 | 3 | 4;
   label: string;
@@ -20,7 +21,6 @@ export function passwordStrength(password: string): {
   return { score: score as 0 | 1 | 2 | 3 | 4, label: labels[score] };
 }
 
-// Here we are extracting the Initials of first name if present then username to display in profile with a general fallback of letter 'U'
 export function getUserInitials(
   name?: string | null,
   username?: string | null,
@@ -36,4 +36,37 @@ export function getUserInitials(
     return username.trim()[0].toUpperCase();
   }
   return "U";
+}
+
+export function getNoteExcerpt(
+  content: JSONContent | string,
+  maxLength = 160,
+): string {
+  if (!content) return "";
+  let text = "";
+  if (typeof content === "object" && content !== null) {
+    try {
+      text = generateText(content as JSONContent, [StarterKit], {
+        blockSeparator: " ",
+      });
+    } catch {
+      text = "";
+    }
+  } else if (typeof content === "string") {
+    const trimmed = content.trim();
+    if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        text = generateText(parsed, [StarterKit], { blockSeparator: " " });
+      } catch {
+        text = trimmed;
+      }
+    } else {
+      text = trimmed;
+    }
+  }
+  const clean = text.replace(/\s+/g, " ").trim();
+  return clean.length > maxLength
+    ? `${clean.slice(0, maxLength).trim()}…`
+    : clean;
 }
