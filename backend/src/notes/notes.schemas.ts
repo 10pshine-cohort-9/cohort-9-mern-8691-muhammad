@@ -96,7 +96,7 @@ export const InviteCollaboratorSchema = z.object({
   identifier: z
     .string()
     .min(1, 'Please provide a valid email address or username')
-    .transform((val) => val.replace(/^@/, '').trim()),
+    .transform((val) => val.trim().replace(/^@/, '')),
   permission: z
     .enum(CollaboratorPermission)
     .optional()
@@ -146,7 +146,7 @@ export const NoteVersionSchema = z.object({
   title: z.string(),
   content: TiptapContentSchema,
   tags: z.array(z.string()).default([]),
-  editedById: z.string().optional(),
+  editedById: z.string().nullable().optional(),
   editedByName: z.string().optional(),
   createdAt: z.union([z.string(), z.date()]),
 });

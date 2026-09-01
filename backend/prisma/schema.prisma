@@ -53,8 +53,8 @@ model NoteVersion {
   title String
   content Json @default("{\"type\":\"doc\",\"content\":[]}")
   tags String[] @default([])
-  editedById String
-  editedBy User @relation(fields: [editedById], references: [id], onDelete: Cascade)
+  editedById String?
+  editedBy User? @relation(fields: [editedById], references: [id], onDelete: SetNull)
   editedByName String
   createdAt DateTime @default(now())
 }

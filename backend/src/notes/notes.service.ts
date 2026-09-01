@@ -125,12 +125,6 @@ export class NotesService {
 
     const where: Prisma.NoteWhereInput = {
       ...ownershipFilter,
-      ...(input.hasCollaborators === true
-        ? { collaborators: { some: {} } }
-        : {}),
-      ...(input.hasCollaborators === false
-        ? { collaborators: { none: {} } }
-        : {}),
       ...(input.dateFrom || input.dateTo
         ? {
             createdAt: {
@@ -158,6 +152,23 @@ export class NotesService {
           }
         : {}),
     };
+
+    if (input.hasCollaborators === true) {
+      if (isSharedScope) {
+        where.AND = [
+          ...(Array.isArray(where.AND)
+            ? where.AND
+            : where.AND
+              ? [where.AND]
+              : []),
+          { collaborators: { some: { userId } } },
+        ];
+      } else {
+        where.collaborators = { some: {} };
+      }
+    } else if (input.hasCollaborators === false) {
+      where.collaborators = { none: {} };
+    }
 
     const [rawData, total] = await this.prisma.$transaction([
       this.prisma.note.findMany({
@@ -285,6 +296,11 @@ export class NotesService {
     }
 
     if (role === 'write') {
+      const isContentEdit =
+        input.title !== undefined ||
+        input.content !== undefined ||
+        input.tags !== undefined;
+
       if (input.isPinned !== undefined || input.isFavorite !== undefined) {
         await this.prisma.noteCollaborator.update({
           where: { noteId_userId: { noteId, userId } },
@@ -297,6 +313,9 @@ export class NotesService {
               : {}),
           },
         });
+      }
+      if (!isContentEdit) {
+        return this.findOne(userId, noteId);
       }
       return this.applyMeaningfulEdit(note, noteId, userId, input, role);
     }
@@ -414,7 +433,7 @@ export class NotesService {
     const note = await this.prisma.note.findUnique({ where: { id: noteId } });
     this.assertOwner(note, ownerId, noteId);
 
-    const identifier = input.identifier.replace(/^@/, '').trim();
+    const identifier = input.identifier.trim().replace(/^@/, '');
 
     const invitee = identifier.includes('@')
       ? await this.prisma.user.findUnique({
@@ -635,21 +654,22 @@ export class NotesService {
       throw new NotFoundException('Version not found');
     }
 
-    const updated = await this.prisma.note.update({
-      where: { id: noteId },
-      data: {
-        title: version.title,
-        content: (version.content ?? undefined) as Prisma.InputJsonValue,
-      },
-    });
+    const [updated] = await this.prisma.$transaction([
+      this.prisma.note.update({
+        where: { id: noteId },
+        data: {
+          title: version.title,
+          content: (version.content ?? undefined) as Prisma.InputJsonValue,
+        },
+      }),
+      this.prisma.noteVersion.deleteMany({
+        where: {
+          noteId,
+          createdAt: { gte: version.createdAt },
+        },
+      }),
+    ]);
     await this.syncTags(noteId, version.tags);
-
-    await this.prisma.noteVersion.deleteMany({
-      where: {
-        noteId,
-        createdAt: { gte: version.createdAt },
-      },
-    });
 
     this.logger.info(
       { userId, noteId, versionId },
@@ -925,7 +945,7 @@ export class NotesService {
     collaborator: Prisma.NoteCollaboratorGetPayload<{
       include: { user: true };
     }>,
-  ): Record<string, unknown> {
+  ): CollaboratorResponse {
     return {
       id: collaborator.id,
       noteId: collaborator.noteId,
@@ -1014,8 +1034,9 @@ export class NotesService {
     if (!markdown?.trim()) {
       return { type: 'doc', content: [] };
     }
+    let editor: Editor | null = null;
     try {
-      const editor = new Editor({
+      editor = new Editor({
         extensions: [
           StarterKit as unknown as AnyExtension,
           Markdown as unknown as AnyExtension,
@@ -1024,9 +1045,9 @@ export class NotesService {
         contentType: 'markdown',
       });
       const json = editor.getJSON();
-      editor.destroy();
       return json as Prisma.InputJsonValue;
-    } catch {
+    } catch (err) {
+      this.logger.warn({ err }, 'Failed to convert markdown to Tiptap JSON');
       return {
         type: 'doc',
         content: [
@@ -1036,6 +1057,8 @@ export class NotesService {
           },
         ],
       };
+    } finally {
+      editor?.destroy();
     }
   }
 
@@ -1045,8 +1068,9 @@ export class NotesService {
       return json;
     }
     if (typeof json === 'object') {
+      let editor: Editor | null = null;
       try {
-        const editor = new Editor({
+        editor = new Editor({
           extensions: [
             StarterKit as unknown as AnyExtension,
             Markdown as unknown as AnyExtension,
@@ -1054,10 +1078,12 @@ export class NotesService {
           content: json as Record<string, unknown>,
         });
         const md = editor.getMarkdown();
-        editor.destroy();
         return md;
-      } catch {
+      } catch (err) {
+        this.logger.warn({ err }, 'Failed to convert Tiptap JSON to markdown');
         return '';
+      } finally {
+        editor?.destroy();
       }
     }
     return '';
@@ -1139,6 +1165,12 @@ export class NotesService {
           Array.isArray((parsed as Record<string, unknown>).notes)
         ? ((parsed as Record<string, unknown>).notes as unknown[])
         : [parsed];
+    const MAX_IMPORT_ITEMS_PER_FILE = 100;
+    if (items.length > MAX_IMPORT_ITEMS_PER_FILE) {
+      throw new BadRequestException(
+        `Import file exceeds the maximum limit of ${MAX_IMPORT_ITEMS_PER_FILE} notes per file`,
+      );
+    }
 
     let created = 0;
     for (const item of items) {

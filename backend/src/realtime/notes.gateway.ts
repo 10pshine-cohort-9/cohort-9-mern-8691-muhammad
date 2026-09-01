@@ -102,11 +102,49 @@ export class NotesGateway
     this.logger.info({ socketId: client.id, userId }, 'Socket disconnected');
   }
 
+  @SubscribeMessage('auth:refresh')
+  async handleAuthRefresh(
+    client: Socket,
+    payload: { token?: string },
+  ): Promise<{ ok: boolean }> {
+    const token = payload?.token || this.extractToken(client);
+    if (!token) {
+      client.disconnect(true);
+      return { ok: false };
+    }
+    try {
+      const verified = await this.tokenService.verifyAccessToken(token);
+      (client.data as AuthenticatedSocketData).userId = verified.sub;
+      return { ok: true };
+    } catch {
+      this.logger.warn(
+        { socketId: client.id },
+        'Socket auth:refresh failed: invalid or expired token',
+      );
+      client.disconnect(true);
+      return { ok: false };
+    }
+  }
+
   @SubscribeMessage('note:join')
   async handleNoteJoin(
     client: Socket,
     noteId: string,
   ): Promise<{ ok: boolean; error?: string }> {
+    const token = this.extractToken(client);
+    if (token) {
+      try {
+        const payload = await this.tokenService.verifyAccessToken(token);
+        (client.data as AuthenticatedSocketData).userId = payload.sub;
+      } catch {
+        this.logger.warn(
+          { socketId: client.id },
+          'Socket note:join rejected: access token expired',
+        );
+        client.disconnect(true);
+        return { ok: false, error: 'Session expired' };
+      }
+    }
     const userId = (client.data as AuthenticatedSocketData).userId;
     try {
       await this.notesService.findOne(userId, noteId);

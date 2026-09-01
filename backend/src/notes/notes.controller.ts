@@ -78,8 +78,8 @@ export class NotesController {
   async exportNotes(
     @CurrentUser() user: SafeUser,
     @Body() dto: ExportNotesDto,
-    @Res() res: Response,
-  ): Promise<void> {
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<string> {
     const result: ExportResult = await this.notesService.exportNotes(
       user.id,
       dto,
@@ -93,12 +93,19 @@ export class NotesController {
     res.setHeader('Content-Type', contentType);
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
 
-    res.send(result.content);
+    if (typeof res.send === 'function') {
+      res.send(result.content);
+    }
+    return result.content;
   }
 
   @Post('import')
   @HttpCode(HttpStatus.OK)
-  @UseInterceptors(FilesInterceptor('files', 10))
+  @UseInterceptors(
+    FilesInterceptor('files', 10, {
+      limits: { fileSize: 5 * 1024 * 1024 },
+    }),
+  )
   async importNotes(
     @CurrentUser() user: SafeUser,
     @UploadedFiles() files: Express.Multer.File[],
@@ -167,6 +174,7 @@ export class NotesController {
   }
 
   @Get(':id/collaborators')
+  @ZodSerializerDto(CollaboratorResponseDto)
   async listCollaborators(
     @CurrentUser() user: SafeUser,
     @Param('id') id: string,
@@ -201,6 +209,7 @@ export class NotesController {
   }
 
   @Get(':id/versions')
+  @ZodSerializerDto(NoteVersionResponseDto)
   async listVersions(
     @CurrentUser() user: SafeUser,
     @Param('id') id: string,
