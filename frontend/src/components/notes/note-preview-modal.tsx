@@ -14,6 +14,7 @@ import { Markdown } from "@tiptap/markdown";
 import { Modal } from "@/components/ui/modal";
 import { toast } from "sonner";
 import type { Note } from "@/lib/api";
+import { sanitizeTiptapDoc } from "@/lib/utils";
 import {
   IconPencil,
   IconStar,
@@ -69,16 +70,20 @@ export function NotePreviewModal({
       Highlight,
       TextAlign.configure({ types: ["heading", "paragraph"] }),
     ],
-    content: note?.content ?? { type: "doc", content: [] },
+    content: note?.content
+      ? sanitizeTiptapDoc(note.content)
+      : { type: "doc", content: [] },
   });
 
   React.useEffect(() => {
     if (opened && note && previewEditor) {
       previewEditor.commands.setContent(
-        note.content ?? { type: "doc", content: [] },
+        note.content
+          ? sanitizeTiptapDoc(note.content)
+          : { type: "doc", content: [] },
       );
     }
-  }, [opened, note, previewEditor]);
+  }, [opened, note, note?.content, note?.updatedAt, previewEditor]);
 
   if (!note) return null;
 

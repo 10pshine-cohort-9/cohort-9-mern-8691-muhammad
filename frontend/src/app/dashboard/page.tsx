@@ -39,7 +39,7 @@ import {
   useBulkActionMutation,
   notesQueryKeys,
 } from "@/lib/hooks/use-notes-query";
-import type { Note, NoteTemplate } from "@/lib/api";
+import type { Note, NoteTemplate, PaginatedNotes } from "@/lib/api";
 import {
   IconSearch,
   IconClose,
@@ -271,53 +271,6 @@ function DashboardContent() {
   const deleteNoteMutation = useDeleteNoteMutation(scope);
   const bulkActionMutation = useBulkActionMutation(scope);
 
-  const noteIdsKey = useMemo(() => {
-    return [...ownedNotes, ...sharedNotes].map((n) => n.id).join(",");
-  }, [ownedNotes, sharedNotes]);
-
-  useEffect(() => {
-    const socket = getSocket();
-    if (!socket || !noteIdsKey) return;
-    const ids = noteIdsKey.split(",");
-
-    ids.forEach((id) => socket.emit("note:join", id));
-
-    const flashUpdated = (id: string) => {
-      setRecentlyUpdatedIds((prev) => new Set(prev).add(id));
-      setTimeout(() => {
-        setRecentlyUpdatedIds((prev) => {
-          const next = new Set(prev);
-          next.delete(id);
-          return next;
-        });
-      }, 2500);
-    };
-
-    const handleUpdated = ({
-      note: updatedNote,
-      editedByUserId,
-    }: {
-      note: Note;
-      editedByUserId: string;
-    }) => {
-      queryClient.invalidateQueries({ queryKey: notesQueryKeys.lists() });
-      if (editedByUserId !== user?.id) flashUpdated(updatedNote.id);
-    };
-
-    const handleDeleted = () => {
-      queryClient.invalidateQueries({ queryKey: notesQueryKeys.lists() });
-    };
-
-    socket.on("note:updated", handleUpdated);
-    socket.on("note:deleted", handleDeleted);
-
-    return () => {
-      ids.forEach((id) => socket.emit("note:leave", id));
-      socket.off("note:updated", handleUpdated);
-      socket.off("note:deleted", handleDeleted);
-    };
-  }, [noteIdsKey, user?.id, isConnected, queryClient]);
-
   useKeyboardShortcut({
     key: "f",
     onTrigger: () => searchInputRef.current?.focus(),
@@ -377,6 +330,58 @@ function DashboardContent() {
 
     return list;
   }, [serverNotes, search, debouncedSearch]);
+
+  const joinedRoomsRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    const socket = getSocket();
+    if (!socket || !isConnected) return;
+    const currentNoteIds = new Set(displayNotes.map((n) => n.id));
+    currentNoteIds.forEach((id) => {
+      if (!joinedRoomsRef.current.has(id)) {
+        socket.emit("note:join", id);
+        joinedRoomsRef.current.add(id);
+      }
+    });
+    joinedRoomsRef.current.forEach((id) => {
+      if (!currentNoteIds.has(id)) {
+        socket.emit("note:leave", id);
+        joinedRoomsRef.current.delete(id);
+      }
+    });
+  }, [displayNotes, isConnected]);
+  useEffect(() => {
+    const socket = getSocket();
+    if (!socket || !isConnected) return;
+    const flashUpdated = (id: string) => {
+      setRecentlyUpdatedIds((prev) => new Set(prev).add(id));
+      setTimeout(() => {
+        setRecentlyUpdatedIds((prev) => {
+          const next = new Set(prev);
+          next.delete(id);
+          return next;
+        });
+      }, 2500);
+    };
+    const handleUpdated = ({
+      note: updatedNote,
+      editedByUserId,
+    }: {
+      note: Note;
+      editedByUserId: string;
+    }) => {
+      queryClient.invalidateQueries({ queryKey: notesQueryKeys.lists() });
+      if (editedByUserId !== user?.id) flashUpdated(updatedNote.id);
+    };
+    const handleDeleted = () => {
+      queryClient.invalidateQueries({ queryKey: notesQueryKeys.lists() });
+    };
+    socket.on("note:updated", handleUpdated);
+    socket.on("note:deleted", handleDeleted);
+    return () => {
+      socket.off("note:updated", handleUpdated);
+      socket.off("note:deleted", handleDeleted);
+    };
+  }, [user?.id, isConnected, queryClient]);
 
   const totalItems = serverNotesQuery.data?.meta.total ?? displayNotes.length;
   const totalPages = serverNotesQuery.data?.meta.totalPages ?? 1;
@@ -507,10 +512,11 @@ function DashboardContent() {
                 </div>
                 <div className="min-w-0">
                   <p className="truncate text-sm font-bold text-foreground">
-                    {user?.name || `@${user?.username}`}
+                    {user?.name ||
+                      (user?.username ? `@${user.username}` : "Loading...")}
                   </p>
                   <p className="truncate text-xs text-muted-foreground font-mono">
-                    @{user?.username}
+                    {user?.username ? `@${user.username}` : ""}
                   </p>
                 </div>
               </div>
@@ -870,8 +876,26 @@ function DashboardContent() {
           historyNote?.viewerRole === undefined
         }
         onClose={() => setHistoryNote(null)}
-        onRestored={() => {
-          queryClient.invalidateQueries({ queryKey: notesQueryKeys.lists() });
+        onRestored={(restored) => {
+          if (previewNote && previewNote.id === restored.id) {
+            setPreviewNote(restored);
+          }
+          if (editingNote && editingNote.id === restored.id) {
+            setEditingNote(restored);
+          }
+          queryClient.setQueriesData<PaginatedNotes>(
+            { queryKey: notesQueryKeys.lists() },
+            (old) => {
+              if (!old) return old;
+              return {
+                ...old,
+                data: old.data.map((n) =>
+                  n.id === restored.id ? restored : n,
+                ),
+              };
+            },
+          );
+          queryClient.invalidateQueries({ queryKey: notesQueryKeys.all });
         }}
       />
 

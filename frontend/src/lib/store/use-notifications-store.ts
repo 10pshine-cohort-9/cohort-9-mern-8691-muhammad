@@ -174,6 +174,8 @@ export function initNotificationsSocket(userId?: string) {
 
   socket.on("connect", handleConnect);
   socket.on("disconnect", handleDisconnect);
+  socket.on("connect_error", handleDisconnect);
+  socket.io?.on?.("reconnect", handleConnect);
   socket.on("notification:new", handleNewNotification);
 
   if (socket.connected) {
@@ -183,6 +185,8 @@ export function initNotificationsSocket(userId?: string) {
   return () => {
     socket.off("connect", handleConnect);
     socket.off("disconnect", handleDisconnect);
+    socket.off("connect_error", handleDisconnect);
+    socket.io?.off?.("reconnect", handleConnect);
     socket.off("notification:new", handleNewNotification);
   };
 }

@@ -34,6 +34,7 @@ import { ShareModal } from "./share-modal";
 import { TagInput } from "./tag-input";
 import { VersionHistoryPanel } from "./version-history-panel";
 import { Modal } from "@/components/ui/modal";
+import { sanitizeTiptapDoc } from "@/lib/utils";
 
 interface NoteEditorModalProps {
   open: boolean;
@@ -98,8 +99,11 @@ export function NoteEditorModal({
 
     if (!editor) return;
 
-    const currentKey =
-      note?.id ?? (template ? `template-${template.title}` : "new-note");
+    const currentKey = note
+      ? `${note.id}-${note.updatedAt}`
+      : template
+        ? `template-${template.title}`
+        : "new-note";
     if (initialLoadedRef.current === currentKey) {
       return;
     }
@@ -116,10 +120,10 @@ export function NoteEditorModal({
     setRemoteDeleted(false);
 
     if (note?.content) {
-      editor.commands.setContent(note.content);
+      editor.commands.setContent(sanitizeTiptapDoc(note.content));
       setContent(editor.getJSON());
     } else if (template?.content) {
-      editor.commands.setContent(template.content);
+      editor.commands.setContent(sanitizeTiptapDoc(template.content));
       setContent(editor.getJSON());
     } else {
       editor.commands.setContent({ type: "doc", content: [] });

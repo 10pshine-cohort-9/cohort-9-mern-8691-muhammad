@@ -81,3 +81,26 @@ export function downloadBlob(blob: Blob, filename: string): void {
   anchor.remove();
   URL.revokeObjectURL(url);
 }
+
+export function sanitizeTiptapDoc(doc: unknown): JSONContent {
+  if (!doc || typeof doc !== "object") {
+    return { type: "doc", content: [] };
+  }
+  const node = doc as JSONContent;
+  if (node.type === "text") {
+    if (typeof node.text !== "string" || node.text.length === 0) {
+      return null as unknown as JSONContent;
+    }
+    return node;
+  }
+  if (Array.isArray(node.content)) {
+    const cleanedContent = node.content
+      .map((child) => sanitizeTiptapDoc(child))
+      .filter(Boolean);
+    return {
+      ...node,
+      content: cleanedContent,
+    };
+  }
+  return node;
+}

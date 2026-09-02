@@ -32,12 +32,14 @@ import type {
 import {
   BulkActionDto,
   BulkActionResponseDto,
+  CollaboratorListResponseDto,
   CollaboratorResponseDto,
   CreateNoteDto,
   ExportNotesDto,
   InviteCollaboratorDto,
   NoteListResponseDto,
   NoteResponseDto,
+  NoteVersionListResponseDto,
   NoteVersionResponseDto,
   QueryNotesDto,
   UpdateCollaboratorDto,
@@ -174,7 +176,7 @@ export class NotesController {
   }
 
   @Get(':id/collaborators')
-  @ZodSerializerDto(CollaboratorResponseDto)
+  @ZodSerializerDto(CollaboratorListResponseDto)
   async listCollaborators(
     @CurrentUser() user: SafeUser,
     @Param('id') id: string,
@@ -209,7 +211,7 @@ export class NotesController {
   }
 
   @Get(':id/versions')
-  @ZodSerializerDto(NoteVersionResponseDto)
+  @ZodSerializerDto(NoteVersionListResponseDto)
   async listVersions(
     @CurrentUser() user: SafeUser,
     @Param('id') id: string,

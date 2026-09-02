@@ -96,7 +96,10 @@ export const InviteCollaboratorSchema = z.object({
   identifier: z
     .string()
     .min(1, 'Please provide a valid email address or username')
-    .transform((val) => val.trim().replace(/^@/, '')),
+    .transform((val) => val.trim().replace(/^@/, ''))
+    .pipe(
+      z.string().min(1, 'Please provide a valid email address or username'),
+    ),
   permission: z
     .enum(CollaboratorPermission)
     .optional()
@@ -163,3 +166,6 @@ export const CollaboratorSchema = z.object({
 export const BulkActionResponseSchema = z.object({
   affected: z.number(),
 });
+
+export const NoteVersionListResponseSchema = z.array(NoteVersionSchema);
+export const CollaboratorListResponseSchema = z.array(CollaboratorSchema);
