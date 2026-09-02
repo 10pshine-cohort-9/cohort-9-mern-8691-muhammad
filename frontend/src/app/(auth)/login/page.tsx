@@ -3,7 +3,7 @@ import { LoginForm } from '@/components/auth/login-form';
 
 export const metadata = { title: 'Log in — Memories' };
 
-export default function LoginPage() {
+export default function LoginPage(): React.ReactElement {
   return (
     <AuthShell mode="login">
       <LoginForm />
