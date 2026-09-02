@@ -38,8 +38,9 @@ export function useScopeNotesQuery(scope: NoteScope) {
       if (firstPage.meta.totalPages <= 1) {
         return firstPage;
       }
+      const maxExtraPages = Math.min(4, firstPage.meta.totalPages - 1);
       const remainingPages = await Promise.all(
-        Array.from({ length: firstPage.meta.totalPages - 1 }, (_, i) =>
+        Array.from({ length: maxExtraPages }, (_, i) =>
           notesApi.list({ scope, page: i + 2, limit: 50 }),
         ),
       );
@@ -330,7 +331,11 @@ export function useBulkActionMutation(_scope: NoteScope = "owned") {
         favorite: "added to favorites",
         unfavorite: "removed from favorites",
       };
-      toast.success(`${res.affected} notes ${labels[action] || "updated"}`);
+      toast.success(
+        `${res.affected} ${res.affected === 1 ? "note" : "notes"} ${
+          labels[action] || "updated"
+        }`,
+      );
     },
     onError: (_err, _variables, context) => {
       if (context?.prevOwned) {

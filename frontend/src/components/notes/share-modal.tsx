@@ -61,18 +61,28 @@ export function ShareModal({ open, note, onClose }: Readonly<ShareModalProps>) {
 
   const identifierValue = useWatch({ control, name: "identifier" }) || "";
 
-  const loadCollaborators = useCallback(async (noteId: string) => {
-    setLoadingCollaborators(true);
+  const loadCollaborators = useCallback(
+    async (noteId: string) => {
+      if (note?.id !== noteId) return;
+      setLoadingCollaborators(true);
 
-    try {
-      const list = await notesApi.listCollaborators(noteId);
-      setCollaborators(Array.isArray(list) ? list : []);
-    } catch {
-      setError("Could not load collaborators.");
-    } finally {
-      setLoadingCollaborators(false);
-    }
-  }, []);
+      try {
+        const list = await notesApi.listCollaborators(noteId);
+        if (note?.id === noteId) {
+          setCollaborators(Array.isArray(list) ? list : []);
+        }
+      } catch {
+        if (note?.id === noteId) {
+          setError("Could not load collaborators.");
+        }
+      } finally {
+        if (note?.id === noteId) {
+          setLoadingCollaborators(false);
+        }
+      }
+    },
+    [note],
+  );
 
   const loadUsers = useCallback(async () => {
     try {
@@ -89,13 +99,38 @@ export function ShareModal({ open, note, onClose }: Readonly<ShareModalProps>) {
   }, []);
 
   useEffect(() => {
+    let active = true;
     if (open && note) {
       setError(null);
+      setCollaborators([]);
       reset({ identifier: "", permission: "READ" });
       loadCollaborators(note.id);
+      setLoadingCollaborators(true);
+      notesApi
+        .listCollaborators(note.id)
+        .then((list) => {
+          if (active) {
+            setCollaborators(Array.isArray(list) ? list : []);
+          }
+        })
+        .catch(() => {
+          if (active) {
+            setError("Could not load collaborators.");
+          }
+        })
+        .finally(() => {
+          if (active) {
+            setLoadingCollaborators(false);
+          }
+        });
       loadUsers();
+    } else {
+      setCollaborators([]);
     }
-  }, [open, note, loadCollaborators, loadUsers, reset]);
+    return () => {
+      active = false;
+    };
+  }, [open, note, loadUsers, reset, loadCollaborators]);
 
   const filteredUsers = useMemo(() => {
     const q = identifierValue.replace(/^@/, "").trim().toLowerCase();

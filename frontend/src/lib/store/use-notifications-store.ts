@@ -48,11 +48,22 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
         notificationsApi.list({ limit: 20 }),
         notificationsApi.unreadCount(),
       ]);
-      set({
-        notifications: list.data,
-        unreadCount: count.count,
-        isLoading: false,
-        error: null,
+      const unread =
+        (count as { count?: number; unreadCount?: number }).unreadCount ??
+        (count as { count?: number }).count ??
+        0;
+      set((state) => {
+        const fetchedMap = new Map(list.data.map((n) => [n.id, n]));
+        const merged = [
+          ...state.notifications.filter((n) => !fetchedMap.has(n.id)),
+          ...list.data,
+        ];
+        return {
+          notifications: merged,
+          unreadCount: Math.max(state.unreadCount, unread),
+          isLoading: false,
+          error: null,
+        };
       });
     } catch (err) {
       set({

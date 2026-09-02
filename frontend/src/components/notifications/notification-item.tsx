@@ -29,12 +29,20 @@ export function NotificationItem({
   return (
     <motion.li
       layout
+      role="button"
+      tabIndex={0}
       initial={{ opacity: 0, x: 16 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: 16, height: 0 }}
       transition={{ duration: 0.25 }}
       onClick={() => onOpen(notification)}
-      className={`group relative flex cursor-pointer gap-3 rounded-2xl border px-3.5 py-3 transition-colors ${
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onOpen(notification);
+        }
+      }}
+      className={`group relative flex cursor-pointer gap-3 rounded-2xl border px-3.5 py-3 transition-colors focus:outline-none focus:ring-2 focus:ring-primary/40 ${
         isUnread
           ? "border-primary/30 bg-primary/5 hover:bg-primary/10"
           : "border-border bg-card hover:bg-muted/50"

@@ -7,6 +7,7 @@ import { IconBell, IconCheck, IconClose } from "@/components/ui/icons";
 import { useNotificationsStore } from "@/lib/store";
 import type { AppNotification } from "@/lib/api";
 import { NotificationItem } from "./notification-item";
+import { presentNotification } from "./present-notification";
 
 interface NotificationDrawerProps {
   open: boolean;
@@ -41,6 +42,15 @@ export function NotificationDrawer({
   const handleOpenNotification = (notification: AppNotification) => {
     if (!notification.readAt) markAsRead(notification.id);
     onClose();
+    try {
+      const { noteId } = presentNotification(notification);
+      if (noteId) {
+        router.push(`/dashboard?preview=${noteId}`);
+        return;
+      }
+    } catch {
+      // Just go to dashboard for as a default
+    }
     router.push("/dashboard");
   };
 
@@ -56,11 +66,21 @@ export function NotificationDrawer({
             onClick={onClose}
           />
           <motion.div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Notifications"
+            tabIndex={-1}
+            ref={(el) => {
+              el?.focus();
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") onClose();
+            }}
             initial={{ x: "100%" }}
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "spring", stiffness: 320, damping: 32 }}
-            className="neo-card fixed right-0 top-0 z-50 flex h-full w-full max-w-sm flex-col shadow-2xl sm:m-4 sm:h-[calc(100%-2rem)] sm:rounded-3xl border border-border bg-card overflow-hidden"
+            className="neo-card fixed right-0 top-0 z-50 flex h-full w-full max-w-sm flex-col shadow-2xl sm:m-4 sm:h-[calc(100%-2rem)] sm:rounded-3xl border border-border bg-card overflow-hidden focus:outline-none"
           >
             <div className="flex items-center justify-between border-b border-border px-5 py-4 bg-muted/20">
               <div>

@@ -46,7 +46,7 @@ export function SelectionBar({
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 40 }}
           transition={{ type: "spring", stiffness: 340, damping: 30 }}
-          className="neo-card fixed bottom-6 left-1/2 z-40 flex -translate-x-1/2 items-center gap-2 rounded-2xl px-4 py-2.5 shadow-2xl border border-border bg-card"
+          className="neo-card fixed bottom-6 left-1/2 z-40 flex max-w-[calc(100vw-2rem)] flex-wrap -translate-x-1/2 items-center justify-center gap-2 rounded-2xl px-4 py-2.5 shadow-2xl border border-border bg-card"
         >
           <span className="mr-1.5 text-xs font-bold text-foreground">
             {count} selected

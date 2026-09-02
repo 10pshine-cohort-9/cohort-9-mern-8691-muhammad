@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useShallow } from "zustand/react/shallow";
 import { NoteList } from "@/components/notes/note-list";
@@ -208,6 +208,19 @@ function DashboardContent() {
     [sharedNotesQuery.data?.data],
   );
 
+  const searchParams = useSearchParams();
+  const noteIdParam = searchParams.get("preview") || searchParams.get("noteId");
+  useEffect(() => {
+    if (noteIdParam) {
+      const match = [...ownedNotes, ...sharedNotes].find(
+        (n) => n.id === noteIdParam,
+      );
+      if (match) {
+        setPreviewNote(match);
+      }
+    }
+  }, [noteIdParam, ownedNotes, sharedNotes, setPreviewNote]);
+
   const stats = useMemo(() => {
     const totalOwned = ownedNotes.length;
     const pinnedCount =
@@ -233,6 +246,7 @@ function DashboardContent() {
   const handleNavClick = (index: number) => {
     setActiveNavIndex(index);
     setPage(1);
+    clearSelection();
     if (index === 0) {
       setScope("owned");
       setPinnedOnly(false);

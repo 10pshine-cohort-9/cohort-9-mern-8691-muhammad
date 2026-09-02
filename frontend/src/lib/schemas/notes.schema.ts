@@ -101,7 +101,8 @@ export const inviteCollaboratorSchema = z.object({
   identifier: z
     .string()
     .min(1, "Please enter an email or username")
-    .transform((val) => val.trim().replace(/^@/, "")),
+    .transform((val) => val.trim().replace(/^@/, ""))
+    .pipe(z.string().min(1, "Please enter an email or username")),
   permission: z.enum(COLLABORATOR_PERMISSIONS),
 });
 

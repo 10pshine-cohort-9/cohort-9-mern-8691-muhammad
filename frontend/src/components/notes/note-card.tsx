@@ -85,11 +85,20 @@ export function NoteCard({
       <CardBody className="w-full h-full">
         <motion.article
           layout
+          role={selectable ? "checkbox" : undefined}
+          aria-checked={selectable ? Boolean(selected) : undefined}
+          tabIndex={selectable ? 0 : undefined}
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95 }}
           transition={{ duration: 0.25, delay: Math.min(index, 8) * 0.03 }}
           onClick={handleCardClick}
+          onKeyDown={(event) => {
+            if (selectable && (event.key === "Enter" || event.key === " ")) {
+              event.preventDefault();
+              onToggleSelect?.(note);
+            }
+          }}
           className={`neo-card group relative cursor-pointer overflow-hidden p-5 flex flex-col justify-between h-full w-full border ${
             isRecentlyUpdated
               ? "ring-2 ring-emerald-500/70 border-emerald-500"

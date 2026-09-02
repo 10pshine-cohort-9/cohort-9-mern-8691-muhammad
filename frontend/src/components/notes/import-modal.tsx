@@ -49,10 +49,19 @@ export function ImportModal({
     onClose();
   };
 
+  const MAX_FILE_SIZE = 2 * 1024 * 1024;
   const addFiles = (fileList: FileList | File[]) => {
-    const accepted = Array.from(fileList).filter(
+    const list = Array.from(fileList);
+    const validExtensions = list.filter(
       (f) => f.name.endsWith(".json") || f.name.endsWith(".md"),
     );
+    const oversized = validExtensions.filter((f) => f.size > MAX_FILE_SIZE);
+    if (oversized.length > 0) {
+      setError(
+        `Some files exceed the 2MB size limit: ${oversized.map((f) => f.name).join(", ")}`,
+      );
+    }
+    const accepted = validExtensions.filter((f) => f.size <= MAX_FILE_SIZE);
     setFiles((prev) => [...prev, ...accepted]);
   };
 

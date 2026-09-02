@@ -1,5 +1,5 @@
-import { z } from 'zod';
-import { API_URL, ApiError, buildQueryString, request } from './client';
+import { z } from "zod";
+import { API_URL, ApiError, buildQueryString, request } from "./client";
 import {
   bulkActionResponseSchema,
   collaboratorSchema,
@@ -21,7 +21,7 @@ import {
   type NotesQueryInput,
   type PaginatedNotes,
   type UpdateNoteInput,
-} from '../schemas';
+} from "../schemas";
 
 export const notesApi = {
   list: (query: NotesQueryInput = {}): Promise<PaginatedNotes> =>
@@ -30,26 +30,26 @@ export const notesApi = {
   get: (id: string): Promise<Note> => request(`/notes/${id}`, noteSchema),
 
   create: (data: CreateNoteInput): Promise<Note> =>
-    request('/notes', noteSchema, {
-      method: 'POST',
+    request("/notes", noteSchema, {
+      method: "POST",
       body: JSON.stringify(data),
     }),
 
   update: (id: string, data: UpdateNoteInput): Promise<Note> =>
     request(`/notes/${id}`, noteSchema, {
-      method: 'PATCH',
+      method: "PATCH",
       body: JSON.stringify(data),
     }),
 
   remove: (id: string): Promise<void> =>
-    request(`/notes/${id}`, voidResponseSchema, { method: 'DELETE' }),
+    request(`/notes/${id}`, voidResponseSchema, { method: "DELETE" }),
 
   inviteCollaborator: (
     id: string,
     data: InviteCollaboratorInput,
   ): Promise<Collaborator> =>
     request(`/notes/${id}/invite`, collaboratorSchema, {
-      method: 'POST',
+      method: "POST",
       body: JSON.stringify(data),
     }),
 
@@ -62,62 +62,76 @@ export const notesApi = {
     permission: CollaboratorPermission,
   ): Promise<Collaborator> =>
     request(`/notes/${id}/invite/${userId}`, collaboratorSchema, {
-      method: 'PATCH',
+      method: "PATCH",
       body: JSON.stringify({ permission }),
     }),
 
   removeCollaborator: (id: string, userId: string): Promise<void> =>
     request(`/notes/${id}/invite/${userId}`, voidResponseSchema, {
-      method: 'DELETE',
+      method: "DELETE",
     }),
 
   export: async (
     data: ExportNotesInput,
   ): Promise<{ blob: Blob; filename: string }> => {
-    const response = await fetch(`${API_URL}/notes/export`, {
-      method: 'POST',
-      credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(data),
-    });
+    let response: Response;
+    try {
+      response = await fetch(`${API_URL}/notes/export`, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      });
+    } catch (error) {
+      throw new ApiError(
+        0,
+        error instanceof Error
+          ? error.message
+          : "Unable to connect to the server. Please try again.",
+        error,
+      );
+    }
 
     if (!response.ok) {
       const body = response.headers
-        .get('content-type')
-        ?.includes('application/json')
+        .get("content-type")
+        ?.includes("application/json")
         ? await response.json()
         : undefined;
+      const message = Array.isArray(body?.message)
+        ? body.message.join(", ")
+        : body?.message;
       throw new ApiError(
         response.status,
-        body?.message || 'Could not export notes.',
+        message || "Could not export notes.",
         body,
       );
     }
 
-    const disposition = response.headers.get('content-disposition') ?? '';
+    const disposition = response.headers.get("content-disposition") ?? "";
     const filenameMatch = disposition.match(/filename="([^"]+)"/);
     const filename =
       filenameMatch?.[1] ??
-      `notes-export.${data.format === 'json' ? 'json' : 'md'}`;
+      `notes-export.${data.format === "json" ? "json" : "md"}`;
 
     return { blob: await response.blob(), filename };
   },
 
   import: async (files: File[]): Promise<ImportResponse> => {
     const formData = new FormData();
-    files.forEach((file) => formData.append('files', file));
+    files.forEach((file) => formData.append("files", file));
 
-    return request('/notes/import', importResponseSchema, {
-      method: 'POST',
+    return request("/notes/import", importResponseSchema, {
+      method: "POST",
       body: formData,
     });
   },
 
   bulkAction: (data: BulkActionInput): Promise<BulkActionResponse> =>
-    request('/notes/bulk', bulkActionResponseSchema, {
-      method: 'POST',
+    request("/notes/bulk", bulkActionResponseSchema, {
+      method: "POST",
       body: JSON.stringify(data),
     }),
 
@@ -129,6 +143,6 @@ export const notesApi = {
 
   restoreVersion: (id: string, versionId: string): Promise<Note> =>
     request(`/notes/${id}/versions/${versionId}/restore`, noteSchema, {
-      method: 'POST',
+      method: "POST",
     }),
 };
