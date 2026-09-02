@@ -126,7 +126,7 @@ function ProfileContent(): React.ReactElement | null {
           <div className="grid gap-6 lg:grid-cols-2">
             <div className="neo-card p-6 sm:p-8 border border-border bg-card shadow-sm rounded-3xl">
               <div className="mb-8 flex items-center gap-4">
-                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-2xl font-black text-white shadow-lg shadow-emerald-500/20">
+                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-linear-to-tr from-emerald-600 to-teal-500 text-2xl font-black text-white shadow-lg shadow-emerald-500/20">
                   {avatarChar || <IconUserCircle size={28} />}
                 </div>
                 <div>
