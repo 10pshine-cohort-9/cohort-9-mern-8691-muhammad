@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { motion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
 import { formatDistanceToNow } from "date-fns";
+import { toast } from "sonner";
 import type { Note } from "@/lib/api";
 import { getNoteExcerpt } from "@/lib/utils";
 import { CardContainer, CardBody, CardItem } from "@/components/ui/3d-card";
@@ -14,8 +15,9 @@ import {
   IconTrash,
   IconPencil,
   IconLoader,
+  IconCheck,
+  IconUsers,
 } from "@/components/ui/icons";
-import { toast } from "sonner";
 
 interface NoteCardProps {
   note: Note;
@@ -25,6 +27,10 @@ interface NoteCardProps {
   onTogglePin: (note: Note) => void;
   onToggleFavorite: (note: Note) => void;
   onDelete: (note: Note) => Promise<void>;
+  isRecentlyUpdated?: boolean;
+  selectable?: boolean;
+  selected?: boolean;
+  onToggleSelect?: (note: Note) => void;
 }
 
 export function NoteCard({
@@ -35,9 +41,17 @@ export function NoteCard({
   onTogglePin,
   onToggleFavorite,
   onDelete,
+  isRecentlyUpdated,
+  selectable,
+  selected,
+  onToggleSelect,
 }: Readonly<NoteCardProps>) {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  const isOwner = note.viewerRole === "owner" || note.viewerRole === undefined;
+  const canDelete = isOwner;
+  const canEdit = isOwner || note.viewerRole === "write";
 
   const handleDeleteClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -56,6 +70,14 @@ export function NoteCard({
     }
   };
 
+  const handleCardClick = () => {
+    if (selectable) {
+      onToggleSelect?.(note);
+    } else {
+      onOpen(note);
+    }
+  };
+
   const excerpt = getNoteExcerpt(note.content, 140) || "Empty note...";
 
   return (
@@ -67,8 +89,14 @@ export function NoteCard({
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95 }}
           transition={{ duration: 0.25, delay: Math.min(index, 8) * 0.03 }}
-          onClick={() => onOpen(note)}
-          className="neo-card group relative cursor-pointer overflow-hidden p-5 flex flex-col justify-between h-full w-full border border-border"
+          onClick={handleCardClick}
+          className={`neo-card group relative cursor-pointer overflow-hidden p-5 flex flex-col justify-between h-full w-full border ${
+            isRecentlyUpdated
+              ? "ring-2 ring-emerald-500/70 border-emerald-500"
+              : selected
+                ? "ring-2 ring-primary border-primary"
+                : "border-border"
+          }`}
         >
           {note.isPinned && (
             <div className="absolute top-0 left-0 right-0 h-1 bg-amber-500" />
@@ -77,7 +105,40 @@ export function NoteCard({
             <div className="absolute top-0 left-0 right-0 h-1 bg-rose-500" />
           )}
 
+          {selectable && (
+            <span
+              className={`absolute left-3.5 top-3.5 z-10 flex h-5 w-5 items-center justify-center rounded-md border transition-colors ${
+                selected
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border bg-card"
+              }`}
+            >
+              {selected && <IconCheck size={12} />}
+            </span>
+          )}
+
+          <AnimatePresence>
+            {isRecentlyUpdated && (
+              <motion.span
+                initial={{ opacity: 0, y: -6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                className="absolute left-3.5 top-3.5 z-10 flex items-center gap-1 rounded-full bg-emerald-500 px-2 py-0.5 text-[10px] font-bold text-white shadow-sm"
+              >
+                Updated live
+              </motion.span>
+            )}
+          </AnimatePresence>
+
           <div className="absolute right-3.5 top-3.5 flex items-center gap-1.5 z-10">
+            {note.ownerName && (
+              <span
+                title={`Shared by ${note.ownerName}`}
+                className="flex items-center gap-1 text-[10px] font-medium bg-secondary text-secondary-foreground px-2 py-0.5 rounded-full border border-border"
+              >
+                <IconUsers size={11} /> Shared by {note.ownerName}
+              </span>
+            )}
             {note.isPinned && (
               <span title="Pinned" className="text-amber-500">
                 <IconPinFilled size={15} />
@@ -132,81 +193,91 @@ export function NoteCard({
               })}
             </span>
 
-            <div className="flex items-center gap-1 opacity-90 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-              {onEdit && (
+            {!selectable && (
+              <div className="flex items-center gap-1 opacity-90 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                {canEdit && onEdit && (
+                  <button
+                    type="button"
+                    aria-label="Edit note"
+                    title="Edit note"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEdit(note);
+                    }}
+                    className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
+                  >
+                    <IconPencil size={15} />
+                  </button>
+                )}
+
                 <button
                   type="button"
-                  aria-label="Edit note"
-                  title="Edit note"
+                  aria-label={
+                    note.isFavorite
+                      ? "Remove from favorites"
+                      : "Add to favorites"
+                  }
+                  title={
+                    note.isFavorite
+                      ? "Remove from favorites"
+                      : "Add to favorites"
+                  }
                   onClick={(e) => {
                     e.stopPropagation();
-                    onEdit(note);
+                    onToggleFavorite(note);
                   }}
-                  className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
+                  className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-rose-500 transition-colors cursor-pointer"
                 >
-                  <IconPencil size={15} />
+                  {note.isFavorite ? (
+                    <IconStarFilled size={15} className="text-rose-500" />
+                  ) : (
+                    <IconStar size={15} />
+                  )}
                 </button>
-              )}
 
-              <button
-                type="button"
-                aria-label={
-                  note.isFavorite ? "Remove from favorites" : "Add to favorites"
-                }
-                title={
-                  note.isFavorite ? "Remove from favorites" : "Add to favorites"
-                }
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onToggleFavorite(note);
-                }}
-                className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-rose-500 transition-colors cursor-pointer"
-              >
-                {note.isFavorite ? (
-                  <IconStarFilled size={15} className="text-rose-500" />
-                ) : (
-                  <IconStar size={15} />
-                )}
-              </button>
+                <button
+                  type="button"
+                  aria-label={note.isPinned ? "Unpin note" : "Pin note"}
+                  title={note.isPinned ? "Unpin note" : "Pin note"}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onTogglePin(note);
+                  }}
+                  className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-amber-500 transition-colors cursor-pointer"
+                >
+                  {note.isPinned ? (
+                    <IconPinFilled size={15} />
+                  ) : (
+                    <IconPin size={15} />
+                  )}
+                </button>
 
-              <button
-                type="button"
-                aria-label={note.isPinned ? "Unpin note" : "Pin note"}
-                title={note.isPinned ? "Unpin note" : "Pin note"}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onTogglePin(note);
-                }}
-                className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-amber-500 transition-colors cursor-pointer"
-              >
-                {note.isPinned ? (
-                  <IconPinFilled size={15} />
-                ) : (
-                  <IconPin size={15} />
+                {canDelete && (
+                  <button
+                    type="button"
+                    aria-label={
+                      confirmingDelete ? "Confirm delete note" : "Delete note"
+                    }
+                    title={
+                      confirmingDelete ? "Confirm delete note" : "Delete note"
+                    }
+                    onClick={handleDeleteClick}
+                    disabled={deleting}
+                    className={`rounded-lg p-1.5 transition-colors cursor-pointer ${
+                      confirmingDelete
+                        ? "bg-destructive text-destructive-foreground"
+                        : "text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                    }`}
+                  >
+                    {deleting ? (
+                      <IconLoader size={15} className="animate-spin" />
+                    ) : (
+                      <IconTrash size={15} />
+                    )}
+                  </button>
                 )}
-              </button>
-
-              <button
-                type="button"
-                aria-label={
-                  confirmingDelete ? "Confirm delete note" : "Delete note"
-                }
-                title={confirmingDelete ? "Confirm delete note" : "Delete note"}
-                onClick={handleDeleteClick}
-                disabled={deleting}
-                className={`rounded-lg p-1.5 transition-colors cursor-pointer ${
-                  confirmingDelete
-                    ? "bg-destructive text-destructive-foreground"
-                    : "text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                }`}
-              >
-                {deleting ? (
-                  <IconLoader size={15} className="animate-spin" />
-                ) : (
-                  <IconTrash size={15} />
-                )}
-              </button>
-            </div>
+              </div>
+            )}
           </CardItem>
 
           {confirmingDelete && !deleting && (
