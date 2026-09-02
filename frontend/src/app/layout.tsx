@@ -6,6 +6,7 @@ import { ReactQueryProvider } from "@/lib/query-client";
 import { MantineProvider, ColorSchemeScript } from "@mantine/core";
 import "@mantine/core/styles.css";
 import "@mantine/tiptap/styles.css";
+import { ClientSync } from "@/components/layout/client-sync";
 import { ThemeToaster } from "@/components/theme/theme-toaster";
 
 const geistSans = Geist({
@@ -46,6 +47,7 @@ export default function RootLayout({
         >
           <MantineProvider defaultColorScheme="light">
             <ReactQueryProvider>
+              <ClientSync />
               {children}
               <ThemeToaster />
             </ReactQueryProvider>
