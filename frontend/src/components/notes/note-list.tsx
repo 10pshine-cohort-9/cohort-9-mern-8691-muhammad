@@ -17,6 +17,10 @@ interface NoteListProps {
   onDelete: (note: Note) => Promise<void>;
   onCreateNote?: () => void;
   emptyMessage?: string;
+  recentlyUpdatedIds?: Set<string>;
+  selectionMode?: boolean;
+  selectedIds?: Set<string>;
+  onToggleSelect?: (note: Note) => void;
 }
 
 export function NoteList({
@@ -30,6 +34,10 @@ export function NoteList({
   onDelete,
   onCreateNote,
   emptyMessage,
+  recentlyUpdatedIds,
+  selectionMode,
+  selectedIds,
+  onToggleSelect,
 }: Readonly<NoteListProps>) {
   if (isLoading) {
     return (
@@ -88,7 +96,7 @@ export function NoteList({
           <button
             type="button"
             onClick={onCreateNote}
-            className="mt-6 inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-sm shadow-md hover:shadow-primary/25 hover:-translate-y-0.5 transition-all cursor-pointer"
+            className="mt-6 inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-sm shadow-md hover:shadow-primary/25 hover:-translate-y-0.5 transition-all"
           >
             <IconPlus size={18} />
             <span>Create Your First Note</span>
@@ -111,6 +119,10 @@ export function NoteList({
             onTogglePin={onTogglePin}
             onToggleFavorite={onToggleFavorite}
             onDelete={onDelete}
+            isRecentlyUpdated={recentlyUpdatedIds?.has(note.id)}
+            selectable={selectionMode}
+            selected={selectedIds?.has(note.id)}
+            onToggleSelect={onToggleSelect}
           />
         ))}
       </AnimatePresence>

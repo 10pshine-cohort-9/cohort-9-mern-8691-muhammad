@@ -2,27 +2,37 @@
 
 import React, { forwardRef } from "react";
 import {
-  SunIcon as AnimateSun,
-  MoonIcon as AnimateMoon,
-  LoaderCircleIcon as AnimateLoader,
-  SparklesIcon as AnimateSparkles,
-  CheckIcon as AnimateCheck,
   EyeIcon as AnimateEye,
   EyeClosedIcon as AnimateEyeClosed,
+  EyeOffIcon as AnimateEyeOff,
+  Trash2Icon as AnimateTrash,
+  PinIcon as AnimatePin,
+  PinOffIcon as AnimatePinOff,
+  StarIcon as AnimateStar,
+  BellRingIcon as AnimateBell,
+  SearchIcon as AnimateSearch,
+  SunIcon as AnimateSun,
+  MoonIcon as AnimateMoon,
+  PlusIcon as AnimatePlus,
+  PencilIcon as AnimatePencil,
+  ShareIcon as AnimateShare,
+  UserPlusIcon as AnimateUserPlus,
+  UsersIcon as AnimateUsers,
   UserRoundIcon as AnimateUserCircle,
+  UploadIcon as AnimateUpload,
+  DownloadIcon as AnimateDownload,
   LogOutIcon as AnimateLogOut,
+  CheckIcon as AnimateCheck,
+  XIcon as AnimateX,
   FileTextIcon as AnimateFileText,
   ArrowLeftIcon as AnimateArrowLeft,
-  PinIcon as AnimatePin,
-  StarIcon as AnimateStar,
-  Trash2Icon as AnimateTrash,
-  SearchIcon as AnimateSearch,
-  PlusIcon as AnimatePlus,
-  ArrowRightIcon as AnimateArrowRight,
-  XIcon as AnimateX,
+  SparklesIcon as AnimateSparkles,
   TagIcon as AnimateTag,
-  PencilIcon as AnimatePencil,
+  HistoryIcon as AnimateHistory,
   ClockIcon as AnimateClock,
+  ArrowRightIcon as AnimateArrowRight,
+  LoaderCircleIcon as AnimateLoader,
+  ChevronDownIcon as AnimateChevronDown,
 } from "@animateicons/react/lucide";
 
 export interface IconProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -32,7 +42,6 @@ export interface IconProps extends React.HTMLAttributes<HTMLDivElement> {
   isAnimated?: boolean;
 }
 
-// This higher order function is just to make every icon containerized into a specific size to be used anywhere.
 function wrapIcon(
   Component: React.ComponentType<Record<string, unknown>>,
   displayName: string,
@@ -55,28 +64,40 @@ function wrapIcon(
   return Wrapped;
 }
 
-export const IconSun = wrapIcon(AnimateSun, "IconSun");
-export const IconMoon = wrapIcon(AnimateMoon, "IconMoon");
-export const IconLoader = wrapIcon(AnimateLoader, "IconLoader");
-export const IconSparkles = wrapIcon(AnimateSparkles, "IconSparkles");
-export const IconCheck = wrapIcon(AnimateCheck, "IconCheck");
 export const IconEye = wrapIcon(AnimateEye, "IconEye");
 export const IconEyeClosed = wrapIcon(AnimateEyeClosed, "IconEyeClosed");
+export const IconEyeOff = wrapIcon(AnimateEyeOff, "IconEyeOff");
+export const IconTrash = wrapIcon(AnimateTrash, "IconTrash");
+export const IconPin = wrapIcon(AnimatePin, "IconPin");
+export const IconPinOff = wrapIcon(AnimatePinOff, "IconPinOff");
+export const IconStar = wrapIcon(AnimateStar, "IconStar");
+export const IconBell = wrapIcon(AnimateBell, "IconBell");
+export const IconSearch = wrapIcon(AnimateSearch, "IconSearch");
+export const IconSun = wrapIcon(AnimateSun, "IconSun");
+export const IconMoon = wrapIcon(AnimateMoon, "IconMoon");
+export const IconPlus = wrapIcon(AnimatePlus, "IconPlus");
+export const IconPencil = wrapIcon(AnimatePencil, "IconPencil");
+export const IconShare = wrapIcon(AnimateShare, "IconShare");
+export const IconUserPlus = wrapIcon(AnimateUserPlus, "IconUserPlus");
+export const IconUsers = wrapIcon(AnimateUsers, "IconUsers");
 export const IconUserCircle = wrapIcon(AnimateUserCircle, "IconUserCircle");
+export const IconUpload = wrapIcon(AnimateUpload, "IconUpload");
+export const IconDownload = wrapIcon(AnimateDownload, "IconDownload");
 export const IconLogout = wrapIcon(AnimateLogOut, "IconLogout");
+export const IconCheck = wrapIcon(AnimateCheck, "IconCheck");
+export const IconClose = wrapIcon(AnimateX, "IconClose");
 export const IconNotes = wrapIcon(AnimateFileText, "IconNotes");
 export const IconArrowLeft = wrapIcon(AnimateArrowLeft, "IconArrowLeft");
-export const IconPin = wrapIcon(AnimatePin, "IconPin");
-export const IconStar = wrapIcon(AnimateStar, "IconStar");
-export const IconTrash = wrapIcon(AnimateTrash, "IconTrash");
-export const IconSearch = wrapIcon(AnimateSearch, "IconSearch");
-export const IconPlus = wrapIcon(AnimatePlus, "IconPlus");
-export const IconArrowRight = wrapIcon(AnimateArrowRight, "IconArrowRight");
-export const IconClose = wrapIcon(AnimateX, "IconClose");
+export const IconFileText = wrapIcon(AnimateFileText, "IconFileText");
+export const IconSparkles = wrapIcon(AnimateSparkles, "IconSparkles");
 export const IconTag = wrapIcon(AnimateTag, "IconTag");
-export const IconPencil = wrapIcon(AnimatePencil, "IconPencil");
+export const IconHistory = wrapIcon(AnimateHistory, "IconHistory");
 export const IconClock = wrapIcon(AnimateClock, "IconClock");
+export const IconArrowRight = wrapIcon(AnimateArrowRight, "IconArrowRight");
+export const IconLoader = wrapIcon(AnimateLoader, "IconLoader");
+export const IconChevronDown = wrapIcon(AnimateChevronDown, "IconChevronDown");
 
+// Filled variants
 export function IconPinFilled({
   size = 18,
   className = "",

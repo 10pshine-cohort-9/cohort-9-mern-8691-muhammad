@@ -10,22 +10,26 @@ import Highlight from "@tiptap/extension-highlight";
 import Superscript from "@tiptap/extension-superscript";
 import Subscript from "@tiptap/extension-subscript";
 import TextAlign from "@tiptap/extension-text-align";
-import Underline from "@tiptap/extension-underline";
-import Link from "@tiptap/extension-link";
+import { Markdown } from "@tiptap/markdown";
 import { Modal } from "@/components/ui/modal";
+import { toast } from "sonner";
 import type { Note } from "@/lib/api";
+import { sanitizeTiptapDoc } from "@/lib/utils";
 import {
   IconPencil,
   IconStar,
   IconStarFilled,
   IconPin,
   IconPinFilled,
+  IconShare,
+  IconDownload,
   IconTrash,
   IconClock,
   IconTag,
+  IconUsers,
+  IconHistory,
   IconClose,
 } from "@/components/ui/icons";
-import { toast } from "sonner";
 
 interface NotePreviewModalProps {
   note: Note | null;
@@ -34,6 +38,9 @@ interface NotePreviewModalProps {
   onEdit: (note: Note) => void;
   onTogglePin: (note: Note) => void;
   onToggleFavorite: (note: Note) => void;
+  onShare: (note: Note) => void;
+  onViewHistory?: (note: Note) => void;
+  onExport: (note: Note) => void;
   onDelete: (note: Note) => Promise<void>;
 }
 
@@ -44,6 +51,9 @@ export function NotePreviewModal({
   onEdit,
   onTogglePin,
   onToggleFavorite,
+  onShare,
+  onViewHistory,
+  onExport,
   onDelete,
 }: Readonly<NotePreviewModalProps>) {
   const [confirmingDelete, setConfirmingDelete] = React.useState(false);
@@ -54,25 +64,32 @@ export function NotePreviewModal({
     editable: false,
     extensions: [
       StarterKit,
-      Underline,
-      Link,
+      Markdown,
       Superscript,
       Subscript,
       Highlight,
       TextAlign.configure({ types: ["heading", "paragraph"] }),
     ],
-    content: note?.content ?? { type: "doc", content: [] },
+    content: note?.content
+      ? sanitizeTiptapDoc(note.content)
+      : { type: "doc", content: [] },
   });
 
   React.useEffect(() => {
     if (opened && note && previewEditor) {
       previewEditor.commands.setContent(
-        note.content ?? { type: "doc", content: [] },
+        note.content
+          ? sanitizeTiptapDoc(note.content)
+          : { type: "doc", content: [] },
       );
     }
-  }, [opened, note, previewEditor]);
+  }, [opened, note, note?.content, note?.updatedAt, previewEditor]);
 
   if (!note) return null;
+
+  const isOwner = note.viewerRole === "owner" || note.viewerRole === undefined;
+  const canEdit = isOwner || note.viewerRole === "write";
+  const canDelete = isOwner;
 
   const handleDelete = async () => {
     if (!confirmingDelete) {
@@ -114,6 +131,11 @@ export function NotePreviewModal({
                   <IconStarFilled size={12} /> Favorite
                 </span>
               )}
+              {note.ownerName && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-secondary text-secondary-foreground border border-border">
+                  <IconUsers size={12} /> Shared by {note.ownerName}
+                </span>
+              )}
             </div>
 
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground wrap-break-word">
@@ -136,17 +158,19 @@ export function NotePreviewModal({
           </div>
 
           <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
-            <button
-              type="button"
-              onClick={() => {
-                onClose();
-                onEdit(note);
-              }}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-primary-foreground font-semibold text-sm shadow-md hover:bg-primary/90 transition-all hover:scale-102 cursor-pointer"
-            >
-              <IconPencil size={15} />
-              <span>Edit Note</span>
-            </button>
+            {canEdit && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onEdit(note);
+                }}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-primary-foreground font-semibold text-sm shadow-md hover:bg-primary/90 transition-all hover:scale-102 cursor-pointer"
+              >
+                <IconPencil size={15} />
+                <span>Edit Note</span>
+              </button>
+            )}
             <button
               type="button"
               onClick={onClose}
@@ -211,25 +235,60 @@ export function NotePreviewModal({
             )}
             <span>{note.isPinned ? "Pinned" : "Pin"}</span>
           </button>
+
+          {isOwner && (
+            <button
+              type="button"
+              onClick={() => onShare(note)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border bg-card hover:bg-muted text-xs font-medium text-foreground transition-colors cursor-pointer"
+            >
+              <IconShare size={15} />
+              <span>Share & Collaborators</span>
+            </button>
+          )}
+
+          {(isOwner || note.viewerRole === "write") && onViewHistory && (
+            <button
+              type="button"
+              onClick={() => onViewHistory(note)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border bg-card hover:bg-muted text-xs font-medium text-foreground transition-colors cursor-pointer"
+            >
+              <IconHistory size={15} />
+              <span>History</span>
+            </button>
+          )}
+
+          {isOwner && (
+            <button
+              type="button"
+              onClick={() => onExport(note)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border bg-card hover:bg-muted text-xs font-medium text-foreground transition-colors cursor-pointer"
+            >
+              <IconDownload size={15} />
+              <span>Export</span>
+            </button>
+          )}
         </div>
 
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={handleDelete}
-            disabled={deleting}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors cursor-pointer ${
-              confirmingDelete
-                ? "bg-destructive text-destructive-foreground"
-                : "bg-destructive/10 text-destructive hover:bg-destructive/20 border border-destructive/20"
-            }`}
-          >
-            <IconTrash size={15} />
-            <span>
-              {confirmingDelete ? "Click to confirm delete" : "Delete"}
-            </span>
-          </button>
-        </div>
+        {canDelete && (
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={deleting}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors cursor-pointer ${
+                confirmingDelete
+                  ? "bg-destructive text-destructive-foreground"
+                  : "bg-destructive/10 text-destructive hover:bg-destructive/20 border border-destructive/20"
+              }`}
+            >
+              <IconTrash size={15} />
+              <span>
+                {confirmingDelete ? "Click to confirm delete" : "Delete"}
+              </span>
+            </button>
+          </div>
+        )}
       </div>
     </Modal>
   );

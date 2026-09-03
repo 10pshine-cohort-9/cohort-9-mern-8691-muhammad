@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { AnimatePresence, motion } from "motion/react";
 import { useRouter } from "next/navigation";
+import { AnimatePresence, motion } from "motion/react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
@@ -18,10 +18,18 @@ import { ApiError } from "@/lib/api";
 import { type LoginInput, loginSchema } from "@/lib/schemas";
 
 export function LoginForm() {
+  const user = useAuthStore((s) => s.user);
+  const isInitialized = useAuthStore((s) => s.isInitialized);
+  const isAuthLoading = useAuthStore((s) => s.isLoading);
   const login = useAuthStore((s) => s.login);
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
+  useEffect(() => {
+    if (isInitialized && !isAuthLoading && user) {
+      router.replace("/dashboard");
+    }
+  }, [isInitialized, isAuthLoading, user, router]);
 
   const {
     register,
@@ -41,7 +49,8 @@ export function LoginForm() {
     try {
       await login(data);
       toast.success("Welcome back to Memories!");
-      router.push("/dashboard");
+      router.replace("/dashboard");
+      router.refresh();
     } catch (err) {
       setServerError(
         err instanceof ApiError

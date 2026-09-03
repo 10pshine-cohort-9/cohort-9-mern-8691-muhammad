@@ -30,14 +30,14 @@ export const NOTE_TEMPLATES: NoteTemplate[] = [
           type: 'paragraph',
           content: [
             { type: 'text', marks: [{ type: 'bold' }], text: 'Date: ' },
-            { type: 'text', text: '' },
+            { type: 'text', text: 'YYYY-MM-DD' },
           ],
         },
         {
           type: 'paragraph',
           content: [
             { type: 'text', marks: [{ type: 'bold' }], text: 'Attendees: ' },
-            { type: 'text', text: '' },
+            { type: 'text', text: 'Name 1, Name 2' },
           ],
         },
         {

@@ -38,6 +38,16 @@ export function getUserInitials(
   return "U";
 }
 
+export function normalizeTags(tags: string[]): string[] {
+  return Array.from(
+    new Set(
+      tags
+        .map((t) => t.trim().replace(/^#+/, "").toLowerCase())
+        .filter(Boolean),
+    ),
+  );
+}
+
 export function getNoteExcerpt(
   content: JSONContent | string,
   maxLength = 160,
@@ -53,20 +63,44 @@ export function getNoteExcerpt(
       text = "";
     }
   } else if (typeof content === "string") {
-    const trimmed = content.trim();
-    if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
-      try {
-        const parsed = JSON.parse(trimmed);
-        text = generateText(parsed, [StarterKit], { blockSeparator: " " });
-      } catch {
-        text = trimmed;
-      }
-    } else {
-      text = trimmed;
-    }
+    text = content;
   }
   const clean = text.replace(/\s+/g, " ").trim();
   return clean.length > maxLength
     ? `${clean.slice(0, maxLength).trim()}…`
     : clean;
+}
+
+export function downloadBlob(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
+
+export function sanitizeTiptapDoc(doc: unknown): JSONContent {
+  if (!doc || typeof doc !== "object") {
+    return { type: "doc", content: [] };
+  }
+  const node = doc as JSONContent;
+  if (node.type === "text") {
+    if (typeof node.text !== "string" || node.text.length === 0) {
+      return null as unknown as JSONContent;
+    }
+    return node;
+  }
+  if (Array.isArray(node.content)) {
+    const cleanedContent = node.content
+      .map((child) => sanitizeTiptapDoc(child))
+      .filter(Boolean);
+    return {
+      ...node,
+      content: cleanedContent,
+    };
+  }
+  return node;
 }

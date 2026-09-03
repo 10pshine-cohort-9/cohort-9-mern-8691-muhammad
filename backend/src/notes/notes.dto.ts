@@ -2,12 +2,14 @@ import { createZodDto } from 'nestjs-zod';
 import {
   BulkActionResponseSchema,
   BulkActionSchema,
+  CollaboratorListResponseSchema,
   CollaboratorSchema,
   CreateNoteSchema,
   ExportNotesSchema,
   InviteCollaboratorSchema,
   NoteListResponseSchema,
   NoteSchema,
+  NoteVersionListResponseSchema,
   NoteVersionSchema,
   QueryNotesSchema,
   UpdateCollaboratorSchema,
@@ -32,4 +34,10 @@ export class NoteVersionResponseDto extends createZodDto(NoteVersionSchema) {}
 export class CollaboratorResponseDto extends createZodDto(CollaboratorSchema) {}
 export class BulkActionResponseDto extends createZodDto(
   BulkActionResponseSchema,
+) {}
+export class NoteVersionListResponseDto extends createZodDto(
+  NoteVersionListResponseSchema,
+) {}
+export class CollaboratorListResponseDto extends createZodDto(
+  CollaboratorListResponseSchema,
 ) {}

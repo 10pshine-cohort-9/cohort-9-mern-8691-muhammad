@@ -6,7 +6,7 @@ import { IconLoader } from "@/components/ui/icons";
 import { useAuthStore } from "@/lib/store";
 import { AuroraBackground } from "@/components/layout/aurora-background";
 
-export default function RootPage() {
+export default function RootPage(): React.ReactElement {
   const user = useAuthStore((s) => s.user);
   const isLoading = useAuthStore((s) => s.isLoading);
   const router = useRouter();
