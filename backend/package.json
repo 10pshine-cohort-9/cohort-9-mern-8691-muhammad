@@ -18,7 +18,7 @@
     "test": "mocha",
     "test:watch": "mocha --watch",
     "test:cov": "c8 npm test",
-    "test:e2e": "mocha --no-config --extension ts --node-option import=tsx --timeout 60000 --check-leaks \"test/**/*.e2e.spec.ts\"",
+    "test:e2e": "mocha --no-config --extension ts --node-option import=@swc-node/register/esm-register --timeout 60000 --check-leaks \"test/**/*.e2e.spec.ts\"",
     "postinstall": "prisma generate",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev"
@@ -64,6 +64,8 @@
     "@nestjs/cli": "^11.0.0",
     "@nestjs/schematics": "^11.0.0",
     "@nestjs/testing": "^11.0.1",
+    "@swc-node/register": "^1.12.1",
+    "@swc/core": "^1.16.1",
     "@types/chai": "^5.2.3",
     "@types/cookie-parser": "^1.4.10",
     "@types/express": "^5.0.0",
